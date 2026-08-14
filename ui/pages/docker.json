@@ -1,0 +1,208 @@
+{
+  "blocks": [
+    {
+      "type": "conditional",
+      "when": { "source": { "kind": "stream", "event": "snapshot", "path": "available" }, "op": "eq", "value": true },
+      "blocks": [
+        {
+          "type": "section",
+          "title": "Docker",
+          "columns": 4,
+          "blocks": [
+            {
+              "type": "stat",
+              "label": "Running",
+              "source": { "kind": "stream", "event": "snapshot", "path": "running" },
+              "format": "number",
+              "spark": { "source": { "kind": "stream", "event": "series" }, "key": "running" }
+            },
+            {
+              "type": "stat",
+              "label": "Stopped",
+              "source": { "kind": "stream", "event": "snapshot", "path": "stopped" },
+              "format": "number"
+            },
+            {
+              "type": "stat",
+              "label": "\u03a3 CPU",
+              "source": { "kind": "stream", "event": "snapshot", "path": "totalCpuPct" },
+              "format": "pct",
+              "spark": { "source": { "kind": "stream", "event": "series" }, "key": "cpu" }
+            },
+            {
+              "type": "stat",
+              "label": "\u03a3 Memory",
+              "source": { "kind": "stream", "event": "snapshot", "path": "totalMemPct" },
+              "format": "pct",
+              "spark": { "source": { "kind": "stream", "event": "series" }, "key": "mem" }
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Disk usage",
+          "columns": 3,
+          "slowTarget": "container",
+          "blocks": [
+            {
+              "type": "stat",
+              "label": "Images",
+              "source": { "kind": "stream", "event": "storage", "path": "images.count" },
+              "format": "number"
+            },
+            {
+              "type": "stat",
+              "label": "Volumes",
+              "source": { "kind": "stream", "event": "storage", "path": "volumes.count" },
+              "format": "number"
+            },
+            {
+              "type": "stat",
+              "label": "Reclaimable",
+              "source": { "kind": "stream", "event": "storage", "path": "totalReclaimableBytes" },
+              "format": "bytes"
+            }
+          ]
+        }
+      ],
+      "else": [
+        { "type": "section", "title": "Docker does not appear to be available on the target machine.", "blocks": [] }
+      ]
+    },
+    {
+      "type": "table",
+      "source": { "kind": "stream", "event": "snapshot", "path": "containers" },
+      "rowKey": "id",
+      "selectable": true,
+      "columns": [
+        { "key": "id", "label": "ID" },
+        { "key": "name", "label": "Name" },
+        { "key": "image", "label": "Image" },
+        { "key": "status", "label": "Status" },
+        { "key": "health", "label": "Health" },
+        { "key": "tagBadges", "label": "Tags", "format": "badges" },
+        { "key": "cpuPct", "label": "CPU%", "format": "pct", "align": "right" },
+        { "key": "memPct", "label": "MEM%", "format": "pct", "align": "right" },
+        { "key": "memUsage", "label": "Memory" },
+        { "key": "netIO", "label": "Net I/O" },
+        { "key": "blockIO", "label": "Block I/O" },
+        { "key": "pids", "label": "PIDs", "format": "number", "align": "right" },
+        { "key": "ports", "label": "Ports" }
+      ],
+      "sortDefault": { "key": "cpuPct", "dir": "desc" },
+      "filterKeys": ["name", "image", "status", "tagsText"],
+      "emptyText": "No containers",
+      "bulkActions": [
+        { "label": "Start", "method": "bulkContainerAction", "args": ["start"] },
+        { "label": "Stop", "method": "bulkContainerAction", "args": ["stop"], "confirm": "Stop the selected containers?" },
+        {
+          "label": "Restart",
+          "method": "bulkContainerAction",
+          "args": ["restart"],
+          "confirm": "Restart the selected containers?"
+        },
+        {
+          "label": "Remove",
+          "method": "bulkContainerAction",
+          "args": ["rm"],
+          "confirm": "Force remove the selected containers? This cannot be undone.",
+          "kind": "danger"
+        },
+        {
+          "label": "Add tag\u2026",
+          "method": "bulkTag",
+          "args": ["docker", "assign"],
+          "prompt": { "label": "Tag name", "input": "text" }
+        },
+        {
+          "label": "Remove tag\u2026",
+          "method": "bulkTag",
+          "args": ["docker", "unassign"],
+          "prompt": { "label": "Tag name", "input": "text" }
+        }
+      ],
+      "rowDetail": [
+        {
+          "type": "keyValue",
+          "source": { "kind": "invoke", "method": "inspect", "args": ["$row.id"] },
+          "rows": [
+            { "key": "image", "label": "Image" },
+            { "key": "command", "label": "Command" },
+            { "key": "state", "label": "State" },
+            { "key": "exitCode", "label": "Exit code", "format": "number" },
+            { "key": "restartCount", "label": "Restarts", "format": "number" },
+            { "key": "restartPolicy", "label": "Restart policy" },
+            { "key": "health.status", "label": "Health" },
+            { "key": "health.failingStreak", "label": "Health failures in a row", "format": "number" },
+            { "key": "health.lastOutput", "label": "Last healthcheck output" },
+            { "key": "createdAt", "label": "Created" },
+            { "key": "startedAt", "label": "Started" },
+            { "key": "finishedAt", "label": "Finished" },
+            { "key": "composeProject", "label": "Compose project" },
+            { "key": "composeService", "label": "Compose service" },
+            { "key": "tagBadges", "label": "Tags", "format": "badges" }
+          ]
+        },
+        {
+          "type": "list",
+          "source": { "kind": "invoke", "method": "inspect", "args": ["$row.id"], "path": "ports" },
+          "columns": [
+            { "key": "container", "label": "Container" },
+            { "key": "host", "label": "Host" }
+          ],
+          "emptyText": "No ports exposed"
+        },
+        {
+          "type": "list",
+          "source": { "kind": "invoke", "method": "inspect", "args": ["$row.id"], "path": "networks" },
+          "columns": [
+            { "key": "name", "label": "Network" },
+            { "key": "ipv4", "label": "IPv4" },
+            { "key": "gateway", "label": "Gateway" }
+          ],
+          "emptyText": "Not attached to a network"
+        },
+        {
+          "type": "list",
+          "source": { "kind": "invoke", "method": "inspect", "args": ["$row.id"], "path": "mounts" },
+          "columns": [
+            { "key": "source", "label": "Source" },
+            { "key": "destination", "label": "Mounted at" },
+            { "key": "mode", "label": "Mode" }
+          ],
+          "emptyText": "No volumes or binds"
+        },
+        {
+          "type": "actions",
+          "actions": [
+            { "label": "Start", "method": "containerAction", "argsFromRow": ["id"], "args": ["start"] },
+            { "label": "Stop", "method": "containerAction", "argsFromRow": ["id"], "args": ["stop"] },
+            { "label": "Restart", "method": "containerAction", "argsFromRow": ["id"], "args": ["restart"] },
+            { "label": "Pause", "method": "containerAction", "argsFromRow": ["id"], "args": ["pause"] },
+            { "label": "Unpause", "method": "containerAction", "argsFromRow": ["id"], "args": ["unpause"] },
+            {
+              "label": "Remove",
+              "method": "containerAction",
+              "argsFromRow": ["id"],
+              "args": ["rm"],
+              "confirm": "Force remove this container? This cannot be undone.",
+              "kind": "danger"
+            }
+          ]
+        },
+        {
+          "type": "log",
+          "event": "log",
+          "startMethod": "logsStart",
+          "stopMethod": "logsStop",
+          "argsFromScope": ["id"]
+        },
+        {
+          "type": "terminal",
+          "label": "Exec shell",
+          "commandTemplate": "docker exec -it {{id}} sh -c 'command -v bash >/dev/null && exec bash || exec sh'"
+        }
+      ]
+    }
+  ]
+}

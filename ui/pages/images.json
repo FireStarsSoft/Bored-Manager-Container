@@ -1,0 +1,170 @@
+{
+  "blocks": [
+    {
+      "type": "section",
+      "title": "Images",
+      "blocks": [
+        {
+          "type": "table",
+          "source": { "kind": "invoke", "method": "images", "intervalKey": "container" },
+          "rowKey": "key",
+          "columns": [
+            { "key": "repository", "label": "Repository" },
+            { "key": "tag", "label": "Tag" },
+            { "key": "id", "label": "ID" },
+            { "key": "size", "label": "Size" },
+            { "key": "created", "label": "Created" }
+          ],
+          "sortDefault": { "key": "repository", "dir": "asc" },
+          "filterKeys": ["repository", "tag"],
+          "rowActions": [
+            {
+              "label": "Remove",
+              "method": "removeImage",
+              "argsFromRow": ["id"],
+              "args": [true],
+              "confirm": "Remove this image? (force removes even if tagged elsewhere)",
+              "kind": "danger"
+            }
+          ],
+          "emptyText": "No images"
+        },
+        {
+          "type": "actions",
+          "actions": [
+            {
+              "label": "Prune unused images",
+              "method": "pruneImages",
+              "args": [true],
+              "confirm": "Run docker image prune -a? This removes every image not used by a container.",
+              "kind": "danger"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Volumes",
+      "blocks": [
+        {
+          "type": "table",
+          "source": { "kind": "invoke", "method": "volumes", "intervalKey": "container" },
+          "columns": [
+            { "key": "name", "label": "Name" },
+            { "key": "driver", "label": "Driver" }
+          ],
+          "sortDefault": { "key": "name", "dir": "asc" },
+          "filterKeys": ["name"],
+          "rowActions": [
+            {
+              "label": "Remove",
+              "method": "removeVolume",
+              "argsFromRow": ["name"],
+              "confirm": "Remove this volume? Its data will be lost.",
+              "kind": "danger"
+            }
+          ],
+          "emptyText": "No volumes"
+        },
+        {
+          "type": "actions",
+          "actions": [
+            {
+              "label": "Prune unused volumes",
+              "method": "pruneVolumes",
+              "confirm": "Run docker volume prune? Unused volumes and their data are deleted.",
+              "kind": "danger"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Networks",
+      "blocks": [
+        {
+          "type": "table",
+          "source": { "kind": "invoke", "method": "networks", "intervalKey": "container" },
+          "columns": [
+            { "key": "name", "label": "Name" },
+            { "key": "driver", "label": "Driver" },
+            { "key": "id", "label": "ID" }
+          ],
+          "sortDefault": { "key": "name", "dir": "asc" },
+          "filterKeys": ["name"],
+          "rowActions": [
+            {
+              "label": "Remove",
+              "method": "removeNetwork",
+              "argsFromRow": ["id"],
+              "confirm": "Remove this network? The built-in bridge/host/none networks cannot be removed and will report an error.",
+              "kind": "danger"
+            }
+          ],
+          "emptyText": "No networks"
+        },
+        {
+          "type": "actions",
+          "actions": [
+            {
+              "label": "Prune unused networks",
+              "method": "pruneNetworks",
+              "confirm": "Run docker network prune?",
+              "kind": "danger"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Disk usage (docker system df)",
+      "columns": 4,
+      "slowTarget": "container",
+      "blocks": [
+        {
+          "type": "keyValue",
+          "source": { "kind": "stream", "event": "storage", "path": "images" },
+          "rows": [
+            { "key": "count", "label": "Images" },
+            { "key": "active", "label": "In use" },
+            { "key": "sizeBytes", "label": "Size", "format": "bytes" },
+            { "key": "reclaimableBytes", "label": "Reclaimable", "format": "bytes" }
+          ]
+        },
+        {
+          "type": "keyValue",
+          "source": { "kind": "stream", "event": "storage", "path": "containers" },
+          "rows": [
+            { "key": "count", "label": "Containers" },
+            { "key": "active", "label": "In use" },
+            { "key": "sizeBytes", "label": "Size", "format": "bytes" },
+            { "key": "reclaimableBytes", "label": "Reclaimable", "format": "bytes" }
+          ]
+        },
+        {
+          "type": "keyValue",
+          "source": { "kind": "stream", "event": "storage", "path": "volumes" },
+          "rows": [
+            { "key": "count", "label": "Volumes" },
+            { "key": "active", "label": "In use" },
+            { "key": "sizeBytes", "label": "Size", "format": "bytes" },
+            { "key": "reclaimableBytes", "label": "Reclaimable", "format": "bytes" }
+          ]
+        },
+        {
+          "type": "keyValue",
+          "source": { "kind": "stream", "event": "storage", "path": "buildCache" },
+          "rows": [
+            { "key": "count", "label": "Build cache" },
+            { "key": "active", "label": "In use" },
+            { "key": "sizeBytes", "label": "Size", "format": "bytes" },
+            { "key": "reclaimableBytes", "label": "Reclaimable", "format": "bytes" }
+          ]
+        }
+      ]
+    }
+  ]
+}

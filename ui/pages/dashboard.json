@@ -1,0 +1,158 @@
+{
+  "blocks": [
+    {
+      "type": "section",
+      "title": "Docker",
+      "columns": 4,
+      "blocks": [
+        {
+          "type": "stat",
+          "label": "Running",
+          "source": { "kind": "stream", "event": "snapshot", "path": "running" },
+          "format": "number",
+          "spark": { "source": { "kind": "stream", "event": "series" }, "key": "running" }
+        },
+        {
+          "type": "stat",
+          "label": "Stopped",
+          "source": { "kind": "stream", "event": "snapshot", "path": "stopped" },
+          "format": "number"
+        },
+        {
+          "type": "stat",
+          "label": "\u03a3 CPU",
+          "source": { "kind": "stream", "event": "snapshot", "path": "totalCpuPct" },
+          "format": "pct",
+          "spark": { "source": { "kind": "stream", "event": "series" }, "key": "cpu" }
+        },
+        {
+          "type": "stat",
+          "label": "\u03a3 Memory",
+          "source": { "kind": "stream", "event": "snapshot", "path": "totalMemPct" },
+          "format": "pct",
+          "spark": { "source": { "kind": "stream", "event": "series" }, "key": "mem" }
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Incus",
+      "columns": 4,
+      "blocks": [
+        {
+          "type": "stat",
+          "label": "Running",
+          "source": { "kind": "stream", "event": "incus", "path": "running" },
+          "format": "number",
+          "spark": { "source": { "kind": "stream", "event": "series" }, "key": "incusRunning" }
+        },
+        {
+          "type": "stat",
+          "label": "Stopped",
+          "source": { "kind": "stream", "event": "incus", "path": "stopped" },
+          "format": "number"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "History",
+      "columns": 2,
+      "blocks": [
+        {
+          "type": "chart",
+          "title": "Running containers",
+          "kind": "area",
+          "source": { "kind": "history", "stream": "container", "keys": ["running", "incusRunning"] },
+          "series": [
+            { "key": "running", "label": "Docker" },
+            { "key": "incusRunning", "label": "Incus" }
+          ],
+          "format": "number"
+        },
+        {
+          "type": "chart",
+          "title": "Docker CPU and memory",
+          "kind": "line",
+          "source": { "kind": "history", "stream": "container", "keys": ["cpu", "mem"] },
+          "series": [
+            { "key": "cpu", "label": "CPU", "unit": "%" },
+            { "key": "mem", "label": "Memory", "unit": "%" }
+          ],
+          "format": "pct"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Disk usage",
+      "columns": 4,
+      "slowTarget": "container",
+      "blocks": [
+        {
+          "type": "stat",
+          "label": "Images",
+          "source": { "kind": "stream", "event": "storage", "path": "images.count" },
+          "format": "number"
+        },
+        {
+          "type": "stat",
+          "label": "Volumes",
+          "source": { "kind": "stream", "event": "storage", "path": "volumes.count" },
+          "format": "number"
+        },
+        {
+          "type": "stat",
+          "label": "Total size",
+          "source": { "kind": "stream", "event": "storage", "path": "totalSizeBytes" },
+          "format": "bytes"
+        },
+        {
+          "type": "stat",
+          "label": "Reclaimable",
+          "source": { "kind": "stream", "event": "storage", "path": "totalReclaimableBytes" },
+          "format": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Recent jobs",
+      "blocks": [
+        {
+          "type": "list",
+          "source": { "kind": "stream", "event": "jobs", "path": "jobs" },
+          "columns": [
+            { "key": "label", "label": "Job" },
+            { "key": "state", "label": "State" },
+            { "key": "progressPct", "label": "Progress", "format": "pct", "align": "right" }
+          ],
+          "limit": 5,
+          "emptyText": "Nothing has been run from Fleet operations yet"
+        }
+      ]
+    },
+    {
+      "type": "conditional",
+      "when": { "source": { "kind": "stream", "event": "snapshot", "path": "available" }, "op": "eq", "value": false },
+      "blocks": [
+        {
+          "type": "section",
+          "title": "Docker is not available here. Install docker.io or docker-ce, then either add your user to the docker group or connect with a sudo password.",
+          "blocks": []
+        }
+      ]
+    },
+    {
+      "type": "conditional",
+      "when": { "source": { "kind": "stream", "event": "incus", "path": "available" }, "op": "eq", "value": false },
+      "blocks": [
+        {
+          "type": "section",
+          "title": "Incus is not available here. Install the incus package, run `incus admin init` once, then add your user to the incus-admin group.",
+          "blocks": []
+        }
+      ]
+    }
+  ]
+}

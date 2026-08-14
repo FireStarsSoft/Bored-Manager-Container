@@ -1,0 +1,125 @@
+{
+  "blocks": [
+    {
+      "type": "section",
+      "title": "Rules in force",
+      "blocks": [
+        {
+          "type": "keyValue",
+          "source": { "kind": "invoke", "method": "rulesEffective", "intervalKey": "container" },
+          "rows": [
+            { "key": "maxCreateCount", "label": "Largest create job" },
+            { "key": "preferIncusThreshold", "label": "Suggest Incus at" },
+            { "key": "maxParallel", "label": "Parallel items at once" },
+            { "key": "bulkActionWarn", "label": "Warn on bulk action size" },
+            { "key": "memHeadroomPct", "label": "Memory headroom %" },
+            { "key": "minPasswordLen", "label": "Minimum password length" },
+            { "key": "itemTimeoutSec", "label": "Per-item timeout (s)" },
+            { "key": "enableArpAdvisory", "label": "Neighbour table advisories" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Change the rules",
+      "blocks": [
+        {
+          "type": "checkForm",
+          "checkMethod": "rulesCheck",
+          "applyMethod": "rulesApply",
+          "applyLabel": "Save rules",
+          "fields": [
+            {
+              "key": "maxCreateCount",
+              "label": "Largest create job",
+              "input": "number",
+              "help": "1 to 500. Empty uses the default of 50."
+            },
+            {
+              "key": "preferIncusThreshold",
+              "label": "Suggest Incus at",
+              "input": "number",
+              "help": "1 to 500. Creating this many Docker containers at once earns a warning. Default 10."
+            },
+            {
+              "key": "maxParallel",
+              "label": "Parallel items at once",
+              "input": "number",
+              "help": "1 to 16. Default 4."
+            },
+            {
+              "key": "bulkActionWarn",
+              "label": "Warn on bulk action size",
+              "input": "number",
+              "help": "1 to 1000. Default 25."
+            },
+            {
+              "key": "memHeadroomPct",
+              "label": "Memory headroom %",
+              "input": "number",
+              "help": "50 to 100. Warn once a job would take more than this share of available memory. Default 90."
+            },
+            {
+              "key": "minPasswordLen",
+              "label": "Minimum password length",
+              "input": "number",
+              "help": "4 to 128. Default 8."
+            },
+            {
+              "key": "itemTimeoutSec",
+              "label": "Per-item timeout (s)",
+              "input": "number",
+              "help": "10 to 3600. Default 120."
+            },
+            {
+              "key": "enableArpAdvisory",
+              "label": "Warn when an L2 network would outgrow the neighbour table",
+              "input": "checkbox",
+              "initial": true
+            }
+          ]
+        },
+        {
+          "type": "actions",
+          "actions": [
+            {
+              "label": "Reset all overrides",
+              "method": "rulesReset",
+              "confirm": "Put every rule back to its default?",
+              "kind": "danger"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Templates",
+      "blocks": [
+        {
+          "type": "table",
+          "source": { "kind": "invoke", "method": "templates", "intervalKey": "container" },
+          "rowKey": "id",
+          "columns": [
+            { "key": "name", "label": "Name" },
+            { "key": "kind", "label": "For" },
+            { "key": "fields", "label": "Fields", "format": "number", "align": "right" },
+            { "key": "createdAt", "label": "Saved", "format": "duration", "align": "right" }
+          ],
+          "sortDefault": { "key": "name", "dir": "asc" },
+          "emptyText": "No templates saved yet",
+          "rowActions": [
+            {
+              "label": "Delete",
+              "method": "templateDelete",
+              "argsFromRow": ["id"],
+              "confirm": "Delete this template?",
+              "kind": "danger"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

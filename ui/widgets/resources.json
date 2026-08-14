@@ -1,0 +1,22 @@
+{
+  "blocks": [
+    {
+      "type": "section",
+      "title": "Container resources",
+      "slowTarget": "container",
+      "blocks": [
+        {
+          "type": "keyValue",
+          "source": { "kind": "stream", "event": "storage" },
+          "rows": [
+            { "key": "images.count", "label": "Images" },
+            { "key": "containers.count", "label": "Containers" },
+            { "key": "volumes.count", "label": "Volumes" },
+            { "key": "totalSizeBytes", "label": "Total size", "format": "bytes" },
+            { "key": "totalReclaimableBytes", "label": "Reclaimable", "format": "bytes" }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,196 @@
+{
+  "blocks": [
+    {
+      "type": "conditional",
+      "when": { "source": { "kind": "stream", "event": "incus", "path": "available" }, "op": "eq", "value": true },
+      "blocks": [
+        {
+          "type": "section",
+          "title": "Instances",
+          "columns": 2,
+          "blocks": [
+            {
+              "type": "stat",
+              "label": "Running",
+              "source": { "kind": "stream", "event": "incus", "path": "running" },
+              "format": "number",
+              "spark": { "source": { "kind": "stream", "event": "series" }, "key": "incusRunning" }
+            },
+            {
+              "type": "stat",
+              "label": "Stopped",
+              "source": { "kind": "stream", "event": "incus", "path": "stopped" },
+              "format": "number"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "source": { "kind": "stream", "event": "incus", "path": "instances" },
+          "rowKey": "name",
+          "selectable": true,
+          "columns": [
+            { "key": "name", "label": "Name" },
+            { "key": "type", "label": "Type" },
+            { "key": "status", "label": "Status" },
+            { "key": "ipv4Text", "label": "IPv4" },
+            { "key": "image", "label": "Image" },
+            { "key": "memUsageBytes", "label": "Memory", "format": "bytes", "align": "right" },
+            { "key": "snapshots", "label": "Snapshots", "format": "number", "align": "right" },
+            { "key": "profilesText", "label": "Profiles" },
+            { "key": "tagBadges", "label": "Tags", "format": "badges" }
+          ],
+          "sortDefault": { "key": "name", "dir": "asc" },
+          "filterKeys": ["name", "status", "image", "ipv4Text", "profilesText", "tagsText"],
+          "groupModes": [{ "id": "type", "label": "By type", "key": "type" }],
+          "emptyText": "No instances",
+          "bulkActions": [
+            { "label": "Start", "method": "bulkIncusAction", "args": ["start"] },
+            { "label": "Stop", "method": "bulkIncusAction", "args": ["stop"], "confirm": "Stop the selected instances?" },
+            { "label": "Restart", "method": "bulkIncusAction", "args": ["restart"], "confirm": "Restart the selected instances?" },
+            {
+              "label": "Delete",
+              "method": "bulkIncusAction",
+              "args": ["delete"],
+              "confirm": "Delete the selected instances and everything in them? This cannot be undone.",
+              "kind": "danger"
+            },
+            {
+              "label": "Add tag\u2026",
+              "method": "bulkTag",
+              "args": ["incus", "assign"],
+              "prompt": { "label": "Tag name", "input": "text" }
+            },
+            {
+              "label": "Remove tag\u2026",
+              "method": "bulkTag",
+              "args": ["incus", "unassign"],
+              "prompt": { "label": "Tag name", "input": "text" }
+            }
+          ],
+          "rowActions": [
+            { "label": "Start", "method": "incusAction", "argsFromRow": ["name"], "args": ["start"] },
+            { "label": "Stop", "method": "incusAction", "argsFromRow": ["name"], "args": ["stop"] },
+            { "label": "Restart", "method": "incusAction", "argsFromRow": ["name"], "args": ["restart"] },
+            {
+              "label": "Delete",
+              "method": "incusAction",
+              "argsFromRow": ["name"],
+              "args": ["delete"],
+              "confirm": "Delete this instance and everything in it? This cannot be undone.",
+              "kind": "danger"
+            }
+          ],
+          "rowDetail": [
+            {
+              "type": "keyValue",
+              "source": { "kind": "invoke", "method": "incusInspect", "args": ["$row.name"] },
+              "rows": [
+                { "key": "type", "label": "Type" },
+                { "key": "status", "label": "Status" },
+                { "key": "image", "label": "Image" },
+                { "key": "architecture", "label": "Architecture" },
+                { "key": "ipv4Text", "label": "IPv4" },
+                { "key": "profilesText", "label": "Profiles" },
+                { "key": "cpuLimit", "label": "CPU limit" },
+                { "key": "memoryLimit", "label": "Memory limit" },
+                { "key": "memUsageBytes", "label": "Memory in use", "format": "bytes" },
+                { "key": "snapshots", "label": "Snapshots", "format": "number" },
+                { "key": "tagsText", "label": "Tags recorded on the instance" },
+                { "key": "createdBy", "label": "Created by" }
+              ]
+            },
+            {
+              "type": "terminal",
+              "label": "Exec shell",
+              "commandTemplate": "incus exec {{name}} -- sh -c 'command -v bash >/dev/null && exec bash || exec sh'"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Images",
+          "blocks": [
+            {
+              "type": "table",
+              "source": { "kind": "invoke", "method": "incusImages", "intervalKey": "container" },
+              "rowKey": "name",
+              "columns": [
+                { "key": "name", "label": "Alias" },
+                { "key": "description", "label": "Description" },
+                { "key": "detail", "label": "Architecture" },
+                { "key": "extra", "label": "Size", "align": "right" }
+              ],
+              "sortDefault": { "key": "name", "dir": "asc" },
+              "emptyText": "No images downloaded yet"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Profiles",
+          "blocks": [
+            {
+              "type": "table",
+              "source": { "kind": "invoke", "method": "incusProfiles", "intervalKey": "container" },
+              "rowKey": "name",
+              "columns": [
+                { "key": "name", "label": "Name" },
+                { "key": "description", "label": "Description" },
+                { "key": "detail", "label": "Devices" },
+                { "key": "extra", "label": "Used by", "align": "right" }
+              ],
+              "sortDefault": { "key": "name", "dir": "asc" },
+              "emptyText": "No profiles"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Networks",
+          "blocks": [
+            {
+              "type": "table",
+              "source": { "kind": "invoke", "method": "incusNetworks", "intervalKey": "container" },
+              "rowKey": "name",
+              "columns": [
+                { "key": "name", "label": "Name" },
+                { "key": "description", "label": "Type" },
+                { "key": "detail", "label": "IPv4" },
+                { "key": "extra", "label": "Used by", "align": "right" }
+              ],
+              "sortDefault": { "key": "name", "dir": "asc" },
+              "emptyText": "No networks"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Storage pools",
+          "blocks": [
+            {
+              "type": "table",
+              "source": { "kind": "invoke", "method": "incusPools", "intervalKey": "container" },
+              "rowKey": "name",
+              "columns": [
+                { "key": "name", "label": "Name" },
+                { "key": "description", "label": "Driver" },
+                { "key": "detail", "label": "Source" },
+                { "key": "extra", "label": "Used by", "align": "right" }
+              ],
+              "sortDefault": { "key": "name", "dir": "asc" },
+              "emptyText": "No storage pools"
+            }
+          ]
+        }
+      ],
+      "else": [
+        {
+          "type": "section",
+          "title": "Incus is not available here. Install the incus package, run `incus admin init` once, then add your user to the incus-admin group.",
+          "blocks": []
+        }
+      ]
+    }
+  ]
+}

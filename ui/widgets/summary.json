@@ -1,0 +1,24 @@
+{
+  "blocks": [
+    {
+      "type": "section",
+      "title": "Containers",
+      "blocks": [
+        {
+          "type": "stat",
+          "label": "Running containers",
+          "source": { "kind": "stream", "event": "snapshot", "path": "running" },
+          "format": "number",
+          "spark": { "source": { "kind": "stream", "event": "series" }, "key": "cpu" }
+        },
+        {
+          "type": "list",
+          "source": { "kind": "stream", "event": "snapshot", "path": "containers" },
+          "columns": [{ "key": "name" }, { "key": "status" }],
+          "limit": 4,
+          "emptyText": "No containers"
+        }
+      ]
+    }
+  ]
+}

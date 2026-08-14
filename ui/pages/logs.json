@@ -1,0 +1,35 @@
+{
+  "blocks": [
+    {
+      "type": "conditional",
+      "when": { "source": { "kind": "stream", "event": "snapshot", "path": "available" }, "op": "eq", "value": true },
+      "blocks": [
+        {
+          "type": "table",
+          "source": { "kind": "stream", "event": "snapshot", "path": "containers" },
+          "columns": [
+            { "key": "id", "label": "ID" },
+            { "key": "name", "label": "Name" },
+            { "key": "image", "label": "Image" },
+            { "key": "status", "label": "Status" }
+          ],
+          "sortDefault": { "key": "name", "dir": "asc" },
+          "filterKeys": ["name", "image"],
+          "emptyText": "No containers",
+          "rowDetail": [
+            {
+              "type": "log",
+              "event": "log",
+              "startMethod": "logsStart",
+              "stopMethod": "logsStop",
+              "argsFromScope": ["id"]
+            }
+          ]
+        }
+      ],
+      "else": [
+        { "type": "section", "title": "Docker does not appear to be available on the target machine.", "blocks": [] }
+      ]
+    }
+  ]
+}

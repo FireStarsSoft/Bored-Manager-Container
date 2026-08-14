@@ -1,0 +1,524 @@
+{
+  "blocks": [
+    {
+      "type": "section",
+      "title": "Jobs",
+      "blocks": [
+        {
+          "type": "table",
+          "source": { "kind": "stream", "event": "jobs", "path": "jobs" },
+          "rowKey": "id",
+          "columns": [
+            { "key": "label", "label": "Job" },
+            { "key": "engine", "label": "Engine" },
+            { "key": "state", "label": "State" },
+            { "key": "progressPct", "label": "Progress", "format": "pct", "align": "right" },
+            { "key": "done", "label": "Done", "format": "number", "align": "right" },
+            { "key": "total", "label": "Total", "format": "number", "align": "right" },
+            { "key": "failed", "label": "Failed", "format": "number", "align": "right" },
+            { "key": "startedAt", "label": "Started", "format": "duration", "align": "right" }
+          ],
+          "sortDefault": { "key": "startedAt", "dir": "desc" },
+          "filterKeys": ["label", "engine", "state"],
+          "emptyText": "Nothing has been run yet",
+          "rowActions": [
+            {
+              "label": "Cancel",
+              "method": "jobCancel",
+              "argsFromRow": ["id"],
+              "confirm": "Stop this job? Items already started will finish.",
+              "kind": "danger"
+            }
+          ],
+          "rowDetail": [
+            {
+              "type": "list",
+              "source": { "kind": "stream", "event": "jobs", "path": "$row.items" },
+              "columns": [
+                { "key": "name", "label": "Item" },
+                { "key": "status", "label": "Status" },
+                { "key": "message", "label": "Message" }
+              ],
+              "limit": 200,
+              "emptyText": "No items"
+            }
+          ]
+        },
+        {
+          "type": "actions",
+          "actions": [
+            {
+              "label": "Clear finished",
+              "method": "jobsClear",
+              "confirm": "Forget every finished job? Running ones are left alone."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Tags",
+      "blocks": [
+        {
+          "type": "table",
+          "source": { "kind": "invoke", "method": "tags", "intervalKey": "container" },
+          "rowKey": "id",
+          "columns": [
+            { "key": "nameBadge", "label": "Tag", "format": "badges" },
+            { "key": "description", "label": "Description" },
+            { "key": "memberCount", "label": "Containers", "format": "number", "align": "right" },
+            { "key": "createdAt", "label": "Created", "format": "duration", "align": "right" }
+          ],
+          "sortDefault": { "key": "memberCount", "dir": "desc" },
+          "filterKeys": ["name", "description"],
+          "emptyText": "No tags yet",
+          "rowActions": [
+            {
+              "label": "Delete",
+              "method": "tagDelete",
+              "argsFromRow": ["id"],
+              "confirm": "Delete this tag? The containers wearing it are left alone.",
+              "kind": "danger"
+            }
+          ],
+          "rowDetail": [
+            {
+              "type": "checkForm",
+              "title": "Edit tag",
+              "checkMethod": "tagCheck",
+              "applyMethod": "tagApply",
+              "argsFromScope": ["id"],
+              "fields": [
+                { "key": "name", "label": "Name", "input": "text", "initialFromScope": "name" },
+                {
+                  "key": "color",
+                  "label": "Colour",
+                  "input": "color",
+                  "initialFromScope": "color",
+                  "help": "Leave it on Auto to keep the colour it already has."
+                },
+                {
+                  "key": "description",
+                  "label": "Description",
+                  "input": "textarea",
+                  "initialFromScope": "description",
+                  "help": "Up to 500 characters."
+                },
+                {
+                  "key": "applyTo",
+                  "label": "Also attach to",
+                  "input": "select",
+                  "initial": "none",
+                  "options": [
+                    { "value": "none", "label": "Nothing else" },
+                    { "value": "all-running-docker", "label": "Every running Docker container" },
+                    { "value": "all-docker", "label": "Every Docker container" },
+                    { "value": "all-incus", "label": "Every Incus instance" },
+                    { "value": "all", "label": "Everything" }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "list",
+              "source": { "kind": "invoke", "method": "tagMembers", "args": ["$row.id"] },
+              "columns": [
+                { "key": "name", "label": "Container" },
+                { "key": "engine", "label": "Engine" },
+                { "key": "status", "label": "Status" }
+              ],
+              "limit": 100,
+              "emptyText": "Nothing wears this tag"
+            }
+          ]
+        },
+        {
+          "type": "checkForm",
+          "title": "Create tag",
+          "checkMethod": "tagCheck",
+          "applyMethod": "tagApply",
+          "applyLabel": "Create tag",
+          "fields": [
+            { "key": "name", "label": "Name", "input": "text", "placeholder": "web" },
+            {
+              "key": "color",
+              "label": "Colour",
+              "input": "color",
+              "help": "Leave it on Auto and the least used colour in the palette is chosen."
+            },
+            {
+              "key": "description",
+              "label": "Description",
+              "input": "textarea",
+              "placeholder": "What this tag is for",
+              "help": "Up to 500 characters."
+            },
+            {
+              "key": "applyTo",
+              "label": "Attach to",
+              "input": "select",
+              "initial": "none",
+              "options": [
+                { "value": "none", "label": "Nothing yet" },
+                { "value": "all-running-docker", "label": "Every running Docker container" },
+                { "value": "all-docker", "label": "Every Docker container" },
+                { "value": "all-incus", "label": "Every Incus instance" },
+                { "value": "all", "label": "Everything" }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "actions",
+          "actions": [
+            {
+              "label": "Prune memberships",
+              "method": "tagsPrune",
+              "confirm": "Drop tag memberships whose container no longer exists?"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Create Docker containers",
+      "blocks": [
+        {
+          "type": "checkForm",
+          "checkMethod": "createDockerCheck",
+          "applyMethod": "createDockerApply",
+          "applyLabel": "Create containers",
+          "fields": [
+            {
+              "key": "template",
+              "label": "Start from a template",
+              "input": "select",
+              "optionsFrom": {
+                "kind": "invoke",
+                "method": "selectOptions",
+                "args": ["templates-create-docker"]
+              },
+              "help": "Anything you fill in below wins over the template."
+            },
+            { "key": "count", "label": "How many", "input": "number", "initial": 1 },
+            {
+              "key": "namePrefix",
+              "label": "Name prefix",
+              "input": "text",
+              "placeholder": "web-",
+              "help": "Containers are named prefix001, prefix002, and so on."
+            },
+            { "key": "image", "label": "Image", "input": "text", "placeholder": "nginx:alpine" },
+            {
+              "key": "env",
+              "label": "Environment",
+              "input": "textarea",
+              "placeholder": "KEY=VALUE",
+              "help": "One KEY=VALUE per line. Lines starting with # are ignored."
+            },
+            {
+              "key": "startupScript",
+              "label": "Startup script",
+              "input": "textarea",
+              "help": "Leave empty to use the image's own command. Anything here runs as sh -c instead."
+            },
+            {
+              "key": "restartPolicy",
+              "label": "Restart policy",
+              "input": "select",
+              "initial": "unless-stopped",
+              "options": [
+                { "value": "no", "label": "no" },
+                { "value": "on-failure", "label": "on-failure" },
+                { "value": "unless-stopped", "label": "unless-stopped" },
+                { "value": "always", "label": "always" }
+              ]
+            },
+            { "key": "cpus", "label": "CPU limit", "input": "text", "placeholder": "0.5", "help": "Optional." },
+            { "key": "memory", "label": "Memory limit", "input": "text", "placeholder": "512m", "help": "Optional." },
+            {
+              "key": "network",
+              "label": "Network",
+              "input": "select",
+              "optionsFrom": { "kind": "invoke", "method": "selectOptions", "args": ["docker-networks"] }
+            },
+            {
+              "key": "ipRange",
+              "label": "Address range",
+              "input": "text",
+              "placeholder": "10.20.0.10-10.20.0.60",
+              "help": "Optional. A CIDR or a first-last pair; addresses are handed out in order."
+            },
+            {
+              "key": "ports",
+              "label": "Published ports",
+              "input": "text",
+              "placeholder": "8080-8082:80/tcp",
+              "help": "hostStart-hostEnd:containerPort[/proto], comma separated. Container i takes hostStart+i."
+            },
+            {
+              "key": "tag",
+              "label": "Tag them",
+              "input": "text",
+              "help": "Optional. A tag that does not exist yet is created."
+            },
+            { "key": "pull", "label": "Pull the image if it is missing", "input": "checkbox" },
+            { "key": "saveAsTemplate", "label": "Save these settings as a template", "input": "checkbox" },
+            { "key": "templateName", "label": "Template name", "input": "text" },
+            {
+              "key": "concurrency",
+              "label": "Run",
+              "input": "select",
+              "initial": "sequential",
+              "options": [
+                { "value": "sequential", "label": "One at a time" },
+                { "value": "parallel", "label": "Several at once" }
+              ]
+            },
+            {
+              "key": "onError",
+              "label": "When one fails",
+              "input": "select",
+              "initial": "continue",
+              "options": [
+                { "value": "continue", "label": "Carry on with the rest" },
+                { "value": "abort", "label": "Stop the job" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Create Incus instances",
+      "blocks": [
+        {
+          "type": "checkForm",
+          "checkMethod": "createIncusCheck",
+          "applyMethod": "createIncusApply",
+          "applyLabel": "Create instances",
+          "fields": [
+            {
+              "key": "template",
+              "label": "Start from a template",
+              "input": "select",
+              "optionsFrom": {
+                "kind": "invoke",
+                "method": "selectOptions",
+                "args": ["templates-create-incus"]
+              }
+            },
+            { "key": "count", "label": "How many", "input": "number", "initial": 1 },
+            { "key": "namePrefix", "label": "Name prefix", "input": "text", "placeholder": "node-" },
+            { "key": "image", "label": "Image", "input": "text", "placeholder": "images:ubuntu/24.04" },
+            {
+              "key": "instanceType",
+              "label": "Type",
+              "input": "select",
+              "initial": "container",
+              "options": [
+                { "value": "container", "label": "System container" },
+                { "value": "vm", "label": "Virtual machine" }
+              ]
+            },
+            {
+              "key": "profile",
+              "label": "Profile",
+              "input": "select",
+              "optionsFrom": { "kind": "invoke", "method": "selectOptions", "args": ["incus-profiles"] }
+            },
+            {
+              "key": "network",
+              "label": "Network",
+              "input": "select",
+              "optionsFrom": { "kind": "invoke", "method": "selectOptions", "args": ["incus-networks"] }
+            },
+            {
+              "key": "storagePool",
+              "label": "Storage pool",
+              "input": "select",
+              "optionsFrom": { "kind": "invoke", "method": "selectOptions", "args": ["incus-pools"] }
+            },
+            { "key": "cpuLimit", "label": "CPU limit", "input": "number", "help": "Optional. Number of cores." },
+            { "key": "memoryLimit", "label": "Memory limit", "input": "text", "placeholder": "1GiB", "help": "Optional." },
+            {
+              "key": "username",
+              "label": "Create this user",
+              "input": "text",
+              "help": "Optional, and the same in every instance the job creates."
+            },
+            {
+              "key": "password",
+              "label": "Password",
+              "input": "password",
+              "help": "Required when a user name is given. Sent to chpasswd over stdin, never in a command line."
+            },
+            {
+              "key": "sshAuthorizedKey",
+              "label": "SSH public key",
+              "input": "textarea",
+              "help": "Optional. Appended to that user's authorized_keys."
+            },
+            { "key": "startupScript", "label": "Startup script", "input": "textarea" },
+            { "key": "tag", "label": "Tag them", "input": "text" },
+            { "key": "saveAsTemplate", "label": "Save these settings as a template", "input": "checkbox" },
+            { "key": "templateName", "label": "Template name", "input": "text" },
+            {
+              "key": "concurrency",
+              "label": "Run",
+              "input": "select",
+              "initial": "sequential",
+              "options": [
+                { "value": "sequential", "label": "One at a time" },
+                { "value": "parallel", "label": "Several at once" }
+              ]
+            },
+            {
+              "key": "onError",
+              "label": "When one fails",
+              "input": "select",
+              "initial": "continue",
+              "options": [
+                { "value": "continue", "label": "Carry on with the rest" },
+                { "value": "abort", "label": "Stop the job" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Bulk actions by criteria",
+      "blocks": [
+        {
+          "type": "checkForm",
+          "checkMethod": "bulkActionCheck",
+          "applyMethod": "bulkActionApply",
+          "applyLabel": "Run on the matches",
+          "kind": "danger",
+          "fields": [
+            {
+              "key": "engine",
+              "label": "Engine",
+              "input": "select",
+              "initial": "docker",
+              "options": [
+                { "value": "docker", "label": "Docker" },
+                { "value": "incus", "label": "Incus" }
+              ]
+            },
+            {
+              "key": "action",
+              "label": "Action",
+              "input": "select",
+              "initial": "stop",
+              "options": [
+                { "value": "start", "label": "Start" },
+                { "value": "stop", "label": "Stop" },
+                { "value": "restart", "label": "Restart" },
+                { "value": "remove", "label": "Remove" },
+                { "value": "pause", "label": "Pause (Docker only)" },
+                { "value": "unpause", "label": "Unpause (Docker only)" }
+              ]
+            },
+            {
+              "key": "targetBy",
+              "label": "Match on",
+              "input": "select",
+              "initial": "tag",
+              "options": [
+                { "value": "tag", "label": "Tag" },
+                { "value": "state", "label": "State" },
+                { "value": "name-pattern", "label": "Name" },
+                { "value": "image", "label": "Image" }
+              ]
+            },
+            {
+              "key": "value",
+              "label": "Value",
+              "input": "text",
+              "help": "A tag name, a state (running, stopped, paused), or a name/image pattern where * matches anything."
+            },
+            {
+              "key": "concurrency",
+              "label": "Run",
+              "input": "select",
+              "initial": "sequential",
+              "options": [
+                { "value": "sequential", "label": "One at a time" },
+                { "value": "parallel", "label": "Several at once" }
+              ]
+            },
+            {
+              "key": "onError",
+              "label": "When one fails",
+              "input": "select",
+              "initial": "continue",
+              "options": [
+                { "value": "continue", "label": "Carry on with the rest" },
+                { "value": "abort", "label": "Stop the job" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Create Docker network",
+      "blocks": [
+        {
+          "type": "checkForm",
+          "checkMethod": "networkCreateCheck",
+          "applyMethod": "networkCreateApply",
+          "applyLabel": "Create network",
+          "fields": [
+            { "key": "name", "label": "Name", "input": "text", "placeholder": "lan0" },
+            {
+              "key": "driver",
+              "label": "Driver",
+              "input": "select",
+              "initial": "ipvlan",
+              "options": [
+                { "value": "ipvlan", "label": "ipvlan" },
+                { "value": "macvlan", "label": "macvlan" },
+                { "value": "bridge", "label": "bridge" }
+              ]
+            },
+            {
+              "key": "mode",
+              "label": "ipvlan mode",
+              "input": "select",
+              "initial": "l2",
+              "options": [
+                { "value": "l2", "label": "L2" },
+                { "value": "l3", "label": "L3" }
+              ],
+              "help": "Only used by the ipvlan driver."
+            },
+            {
+              "key": "parent",
+              "label": "Parent interface",
+              "input": "select",
+              "optionsFrom": { "kind": "invoke", "method": "selectOptions", "args": ["host-interfaces"] },
+              "help": "Required for ipvlan and macvlan."
+            },
+            { "key": "subnet", "label": "Subnet", "input": "text", "placeholder": "192.168.1.0/24" },
+            { "key": "gateway", "label": "Gateway", "input": "text", "placeholder": "192.168.1.1" },
+            {
+              "key": "ipRange",
+              "label": "Allocation range",
+              "input": "text",
+              "placeholder": "192.168.1.192/27",
+              "help": "Optional. Keeps Docker out of the addresses your DHCP server hands out."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
