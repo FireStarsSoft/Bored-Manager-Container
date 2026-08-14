@@ -187,8 +187,15 @@
       "else": [
         {
           "type": "section",
-          "title": "Incus is not available here. Install the incus package, run `incus admin init` once, then add your user to the incus-admin group.",
-          "blocks": []
+          "title": "Incus is not available",
+          "blocks": [
+            {
+              "type": "list",
+              "source": { "kind": "stream", "event": "incus", "path": "instances" },
+              "columns": [{ "key": "name" }],
+              "emptyText": "The incus command was not found. Module settings can install it; afterwards run `incus admin init` once and add your user to the incus-admin group."
+            }
+          ]
         }
       ]
     }

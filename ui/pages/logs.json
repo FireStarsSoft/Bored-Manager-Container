@@ -28,7 +28,18 @@
         }
       ],
       "else": [
-        { "type": "section", "title": "Docker does not appear to be available on the target machine.", "blocks": [] }
+        {
+          "type": "section",
+          "title": "Docker is not available",
+          "blocks": [
+            {
+              "type": "list",
+              "source": { "kind": "stream", "event": "snapshot", "path": "containers" },
+              "columns": [{ "key": "name" }],
+              "emptyText": "docker ps did not answer on this machine, so there are no logs to follow. Module settings can install Docker."
+            }
+          ]
+        }
       ]
     }
   ]

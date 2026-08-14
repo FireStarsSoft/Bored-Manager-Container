@@ -12,7 +12,7 @@ Docker and Incus on the target machine, side by side: what is running, what it c
 | Sidebar | **Logs** — `docker logs -f` for any container |
 | Sidebar | **Incus** — instances (containers and VMs) with the same table, plus images, profiles, networks and storage pools |
 | Sidebar | **Fleet operations** — jobs, tags, bulk create for both engines, bulk actions by criteria, and creating an ipvlan/macvlan network |
-| Sidebar | **Module settings** — the rules every check measures against, and saved templates |
+| Sidebar | **Module settings** — installing a missing runtime, the rules every check measures against, and saved templates |
 | Overview | **Containers** widget (on by default) and **Container resources** (off by default) |
 | History | writes the `container` metrics stream (Docker running, Σ CPU, Σ memory, Incus running) |
 
@@ -63,9 +63,15 @@ On demand: `docker images|volume ls|network ls`, `docker inspect`, `docker logs 
 
 The module's own rules — largest create job, when to suggest Incus, parallelism, memory headroom, minimum password length, per-item timeout — live on its **Module settings** page. A rule left empty there uses the default; anything set overrides it.
 
-## When it shows nothing
+## When neither runtime is installed
 
-No Docker daemon, or the connecting user is not in the `docker` group: the Docker sections say so and point at the fix. Incus missing is not an error — its page and stats simply say it is not installed. Note that the GPU module's auto power cap watches `docker ps` itself and does not need this module.
+The **Module settings** page offers to install whichever one is missing, through the same check-then-apply as everything else: the check names the package manager it found and prints the exact command it would run as root, and the apply streams that command's output onto the page. It installs the distro's own package (`docker.io`, `moby-engine` or `docker`; `incus`) and starts the service — no third-party repository is added, and nothing is piped from the internet into a root shell. A **custom command** box is there for a distro or a repository this does not cover; that one runs as typed.
+
+Incus needs `incus admin init` once afterwards, which is a set of choices about storage and networking that only the person running the machine can make — so it is not done here.
+
+A runtime that is installed but still unavailable is a different problem, and installing it again will not fix it: the container listing is read as the connected user, never elevated, so that user has to be in the `docker` group (or the connection has to be as root). A sudo password does not help — it is only used by things that ask for it explicitly.
+
+Incus missing is not an error — its page and stats simply say it is not installed. Note that the GPU module's auto power cap watches `docker ps` itself and does not need this module.
 
 ## Files
 
@@ -85,4 +91,5 @@ main/networks.ts       creating an ipvlan/macvlan/bridge network
 main/options.ts        what the select fields offer; saved templates
 main/rules.ts          the limits every check measures against
 main/rules-editor.ts   reading and changing those limits
+main/install.ts        installing Docker or Incus on a machine that has neither
 ```

@@ -10,6 +10,7 @@ import { BulkRunner, type LiveContainers } from './bulk'
 import { NetworkCreator } from './networks'
 import { OptionSource, deleteTemplate, listTemplates } from './options'
 import { RulesEditor } from './rules-editor'
+import { RuntimeInstaller, type RuntimeKind } from './install'
 
 /** The slow section this module owns, as named in settings.slowRefresh. */
 const STORAGE_TARGET = 'container'
@@ -71,6 +72,7 @@ const activate: ModuleActivate = (ctx) => {
   const networkCreator = new NetworkCreator(ctx)
   const options = new OptionSource(ctx, incus, hostStore)
   const rulesEditor = new RulesEditor(ctx)
+  const installer = new RuntimeInstaller(ctx)
 
   ctx.handle('images', () => service.listImages())
   ctx.handle('volumes', () => service.listVolumes())
@@ -138,6 +140,17 @@ const activate: ModuleActivate = (ctx) => {
   ctx.handle('rulesApply', (payload: unknown) => rulesEditor.apply(payload))
   ctx.handle('rulesReset', () => rulesEditor.reset())
 
+  // A pair per runtime, like the create pages: a `checkForm` on a settings page
+  // has no row to carry which one it means, and the apply reads the runtime off
+  // the plan its check froze.
+  const install = (kind: RuntimeKind) => (values: unknown) => installer.check(kind, values)
+  ctx.handle('installDockerCheck', install('docker'))
+  ctx.handle('installDockerApply', (payload: unknown) => installer.apply(payload))
+  ctx.handle('installIncusCheck', install('incus'))
+  ctx.handle('installIncusApply', (payload: unknown) => installer.apply(payload))
+  ctx.handle('installLogTail', () => installer.logTail())
+  ctx.handle('installCancel', () => installer.cancel())
+
   /** See the same guard in the Disk module: df must not re-run on every change. */
   let appliedSlow: string | null = null
 
@@ -163,6 +176,7 @@ const activate: ModuleActivate = (ctx) => {
       // and the next one has its own tags and job history.
       jobs.reset()
       hostStore.reset()
+      installer.reset()
     },
     snapshots() {
       // `snapshot`/`incus`/`jobs` are 'latest' (the current listing), `series`
@@ -172,7 +186,8 @@ const activate: ModuleActivate = (ctx) => {
         incus: service.incusLatest,
         series: service.seriesHistory,
         storage: service.slowLatest,
-        jobs: jobs.snapshot()
+        jobs: jobs.snapshot(),
+        install: installer.status()
       }
     },
     slowTargets() {
@@ -184,6 +199,7 @@ const activate: ModuleActivate = (ctx) => {
     dispose() {
       service.dispose()
       jobs.dispose()
+      installer.reset()
     }
   }
 }

@@ -2,6 +2,12 @@
 
 All notable changes to the Container module (called Docker before 3.0.0). Versions are independent of the app's.
 
+## 3.1.0
+
+- **Install a missing runtime** from Module settings. It only appears while that runtime is unavailable, and goes through the usual check step: the check names the package manager it found (apt-get, dnf or pacman), refuses without root, and prints the exact command it will run; the apply runs that command and streams its output onto the page. Distro packages only (`docker.io` / `moby-engine` / `docker`, and `incus`) - no third-party repository, and nothing downloaded into a root shell. A custom command box covers everything else.
+- Pages that were showing an empty card with the fix written in its title now say what is wrong in the card, and say where to install it.
+- The Docker create check no longer claims "Docker will be tried with sudo" when the daemon is unreachable. Nothing here is elevated, so it says what actually helps: the connected user in the `docker` group, or a connection as root.
+
 ## 3.0.0
 
 - Renamed from `docker` to `container`: Incus sits next to Docker now, and the module covers both. An existing install keeps its enabled state, its Overview widget positions and its update intervals — the settings file migrates `refresh.docker` to `refresh.container` and `docker.summary`/`docker.resources` to `container.*`. The `docker` metrics stream is not converted; the new `container` stream starts empty and the old files expire on their own retention.

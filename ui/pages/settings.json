@@ -1,6 +1,119 @@
 {
   "blocks": [
     {
+      "type": "conditional",
+      "when": { "source": { "kind": "stream", "event": "snapshot", "path": "available" }, "op": "eq", "value": false },
+      "blocks": [
+        {
+          "type": "section",
+          "title": "Docker is not available on this machine",
+          "blocks": [
+            {
+              "type": "checkForm",
+              "title": "Install Docker",
+              "checkMethod": "installDockerCheck",
+              "applyMethod": "installDockerApply",
+              "applyLabel": "Install Docker",
+              "kind": "danger",
+              "fields": [
+                {
+                  "key": "mode",
+                  "label": "How",
+                  "input": "select",
+                  "initial": "default",
+                  "options": [
+                    { "value": "default", "label": "The distro's own package (docker.io / moby-engine / docker)" },
+                    { "value": "custom", "label": "A command I type myself" }
+                  ],
+                  "help": "The default installs from the distro's repositories and starts the service. No third-party repository is added."
+                },
+                {
+                  "key": "command",
+                  "label": "Custom command",
+                  "input": "textarea",
+                  "placeholder": "DEBIAN_FRONTEND=noninteractive apt-get update -qq && apt-get install -y docker.io && systemctl enable --now docker",
+                  "help": "Only used with \"A command I type myself\". One line, run as root exactly as typed."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "conditional",
+      "when": { "source": { "kind": "stream", "event": "incus", "path": "available" }, "op": "eq", "value": false },
+      "blocks": [
+        {
+          "type": "section",
+          "title": "Incus is not available on this machine",
+          "blocks": [
+            {
+              "type": "checkForm",
+              "title": "Install Incus",
+              "checkMethod": "installIncusCheck",
+              "applyMethod": "installIncusApply",
+              "applyLabel": "Install Incus",
+              "kind": "danger",
+              "fields": [
+                {
+                  "key": "mode",
+                  "label": "How",
+                  "input": "select",
+                  "initial": "default",
+                  "options": [
+                    { "value": "default", "label": "The distro's own package (incus)" },
+                    { "value": "custom", "label": "A command I type myself" }
+                  ],
+                  "help": "Incus needs one more step afterwards: run `incus admin init` on the machine to choose storage and networking."
+                },
+                {
+                  "key": "command",
+                  "label": "Custom command",
+                  "input": "textarea",
+                  "placeholder": "apt-get update -qq && apt-get install -y incus",
+                  "help": "Only used with \"A command I type myself\". One line, run as root exactly as typed."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "conditional",
+      "when": { "source": { "kind": "stream", "event": "install", "path": "kind" }, "op": "exists" },
+      "blocks": [
+        {
+          "type": "section",
+          "title": "Install output",
+          "blocks": [
+            {
+              "type": "keyValue",
+              "source": { "kind": "stream", "event": "install" },
+              "rows": [
+                { "key": "kind", "label": "Installing" },
+                { "key": "running", "label": "Running" },
+                { "key": "ok", "label": "Finished successfully" }
+              ]
+            },
+            { "type": "log", "event": "installlog", "startMethod": "installLogTail" },
+            {
+              "type": "actions",
+              "actions": [
+                {
+                  "label": "Cancel install",
+                  "method": "installCancel",
+                  "confirm": "Stop the install command? The machine may be left with the package half installed.",
+                  "kind": "danger"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "type": "section",
       "title": "Rules in force",
       "blocks": [

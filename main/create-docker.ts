@@ -142,7 +142,9 @@ export class DockerCreator {
       findings.push({
         level: 'error',
         label: 'Docker is not reachable on this machine',
-        detail: probe.dockerError
+        // These commands are never elevated, so a sudo password does not help:
+        // it is the connected user that has to be able to reach the daemon.
+        detail: `${probe.dockerError}. Module settings can install Docker; if it is installed, add the connected user to the docker group or connect as root.`
       })
     }
 
@@ -304,15 +306,6 @@ export class DockerCreator {
         level: 'info',
         label: 'The startup script calls docker',
         detail: 'That only works if the container has the socket mounted, which this form does not do.'
-      })
-    }
-
-    // R-CD-12
-    if (!probe.dockerOk && this.ctx.hasSudo) {
-      findings.push({
-        level: 'info',
-        label: 'Docker will be tried with sudo',
-        detail: 'The connected user cannot reach the daemon directly.'
       })
     }
 

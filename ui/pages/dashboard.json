@@ -138,8 +138,15 @@
       "blocks": [
         {
           "type": "section",
-          "title": "Docker is not available here. Install docker.io or docker-ce, then either add your user to the docker group or connect with a sudo password.",
-          "blocks": []
+          "title": "Docker is not available",
+          "blocks": [
+            {
+              "type": "list",
+              "source": { "kind": "stream", "event": "snapshot", "path": "containers" },
+              "columns": [{ "key": "name" }],
+              "emptyText": "docker ps did not answer. Module settings can install it; if it is already installed, add your user to the docker group or connect as root - the container listing is read as your own user, so a sudo password does not help here."
+            }
+          ]
         }
       ]
     },
@@ -149,8 +156,15 @@
       "blocks": [
         {
           "type": "section",
-          "title": "Incus is not available here. Install the incus package, run `incus admin init` once, then add your user to the incus-admin group.",
-          "blocks": []
+          "title": "Incus is not available",
+          "blocks": [
+            {
+              "type": "list",
+              "source": { "kind": "stream", "event": "incus", "path": "instances" },
+              "columns": [{ "key": "name" }],
+              "emptyText": "The incus command was not found. Module settings can install it; afterwards run `incus admin init` once and add your user to the incus-admin group."
+            }
+          ]
         }
       ]
     }

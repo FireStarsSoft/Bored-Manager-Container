@@ -2,8 +2,8 @@
   "apiVersion": 2,
   "id": "container",
   "name": "Container",
-  "version": "3.0.0",
-  "description": "Docker and Incus side by side: containers with CPU, memory, network and block I/O, inspect with logs and an exec shell, images, volumes and networks - plus tags, bulk create and bulk actions with a check step before anything runs.",
+  "version": "3.1.0",
+  "description": "Docker and Incus side by side: containers with CPU, memory, network and block I/O, inspect with logs and an exec shell, images, volumes and networks - plus tags, bulk create and bulk actions with a check step before anything runs, and installing either runtime on a machine that has neither.",
   "author": "Bored Manager",
   "minAppVersion": "0.2.0",
   "defaultEnabled": false,
@@ -28,7 +28,8 @@
     { "event": "incus", "kind": "latest" },
     { "event": "series", "kind": "series" },
     { "event": "storage", "kind": "latest" },
-    { "event": "jobs", "kind": "latest" }
+    { "event": "jobs", "kind": "latest" },
+    { "event": "install", "kind": "latest" }
   ],
   "methods": [
     "images",
@@ -76,7 +77,13 @@
     "rulesEffective",
     "rulesCheck",
     "rulesApply",
-    "rulesReset"
+    "rulesReset",
+    "installDockerCheck",
+    "installDockerApply",
+    "installIncusCheck",
+    "installIncusApply",
+    "installLogTail",
+    "installCancel"
   ],
   "fastInterval": "container",
   "slowInterval": "container"
