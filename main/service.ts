@@ -540,6 +540,8 @@ export class ContainerService {
     action: 'start' | 'stop' | 'restart' | 'rm' | 'kill' | 'pause' | 'unpause'
   ): Promise<OkResult> {
     if (!ID_RE.test(id)) return Promise.resolve({ ok: false, error: 'invalid container id' })
+    const allowed = new Set(['start', 'stop', 'restart', 'rm', 'kill', 'pause', 'unpause'])
+    if (!allowed.has(action)) return Promise.resolve({ ok: false, error: 'invalid container action' })
     const flag = action === 'rm' ? ' -f' : ''
     return this.action(`docker ${action}${flag} ${shQuote(id)}`)
   }

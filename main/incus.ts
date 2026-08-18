@@ -126,6 +126,10 @@ export class IncusCli {
     if (!INCUS_NAME_RE.test(name)) {
       return Promise.resolve({ ok: false, error: 'invalid instance name' })
     }
+    const allowed: ReadonlySet<string> = new Set(['start', 'stop', 'restart', 'delete'])
+    if (!allowed.has(action)) {
+      return Promise.resolve({ ok: false, error: 'invalid instance action' })
+    }
     // `incus delete` refuses a running instance without --force, and a user who
     // asked to delete one from a row action has already been through a confirm.
     const cmd = action === 'delete' ? `incus delete --force ${shQuote(name)}` : `incus ${action} ${shQuote(name)}`
