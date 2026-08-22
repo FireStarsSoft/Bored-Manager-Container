@@ -1,4 +1,5 @@
 import type { ModuleActivate } from '@shared/modules'
+import { createTtlCache } from '@shared/cache'
 import { ContainerService, dockerRef, incusRef } from './service'
 import { IncusCli, type IncusAction } from './incus'
 import { HostStore } from './store'
@@ -73,29 +74,55 @@ const activate: ModuleActivate = (ctx) => {
   const options = new OptionSource(ctx, incus, hostStore)
   const rulesEditor = new RulesEditor(ctx)
   const installer = new RuntimeInstaller(ctx)
-
-  ctx.handle('images', () => service.listImages())
-  ctx.handle('volumes', () => service.listVolumes())
-  ctx.handle('networks', () => service.listNetworks())
-  ctx.handle('inspect', (id: string) => service.inspect(id))
-  ctx.handle('containerAction', (id: string, action: ContainerAction) =>
-    service.containerAction(id, action)
+  const reads = createTtlCache<unknown>(() =>
+    Math.max(1_000, ctx.fastIntervalMs('container') / 2)
   )
-  ctx.handle('removeImage', (id: string, force: boolean) => service.removeImage(id, force))
-  ctx.handle('pruneImages', (all: boolean) => service.pruneImages(all))
-  ctx.handle('removeVolume', (name: string) => service.removeVolume(name))
-  ctx.handle('pruneVolumes', () => service.pruneVolumes())
-  ctx.handle('removeNetwork', (id: string) => service.removeNetwork(id))
-  ctx.handle('pruneNetworks', () => service.pruneNetworks())
+  const cached = <T>(key: string, load: () => Promise<T>): Promise<T> =>
+    reads.get(key, load) as Promise<T>
+  const clearAfter = async (
+    run: () => unknown | Promise<unknown>
+  ): Promise<unknown> => {
+    try {
+      return await run()
+    } finally {
+      reads.clear()
+    }
+  }
+
+  ctx.handle('images', () => cached('docker:images', () => service.listImages()))
+  ctx.handle('volumes', () => cached('docker:volumes', () => service.listVolumes()))
+  ctx.handle('networks', () => cached('docker:networks', () => service.listNetworks()))
+  ctx.handle('inspect', (id: string) =>
+    cached(`docker:inspect:${id}`, () => service.inspect(id))
+  )
+  ctx.handle('containerAction', (id: string, action: ContainerAction) =>
+    clearAfter(() => service.containerAction(id, action))
+  )
+  ctx.handle('removeImage', (id: string, force: boolean) =>
+    clearAfter(() => service.removeImage(id, force))
+  )
+  ctx.handle('pruneImages', (all: boolean) =>
+    clearAfter(() => service.pruneImages(all))
+  )
+  ctx.handle('removeVolume', (name: string) =>
+    clearAfter(() => service.removeVolume(name))
+  )
+  ctx.handle('pruneVolumes', () => clearAfter(() => service.pruneVolumes()))
+  ctx.handle('removeNetwork', (id: string) =>
+    clearAfter(() => service.removeNetwork(id))
+  )
+  ctx.handle('pruneNetworks', () => clearAfter(() => service.pruneNetworks()))
   ctx.handle('logsStart', (id: string) => service.startLogs(id))
   ctx.handle('logsStop', (id: string) => service.stopLogs(id))
 
-  ctx.handle('incusAction', (name: string, action: IncusAction) => incus.action(name, action))
+  ctx.handle('incusAction', (name: string, action: IncusAction) =>
+    clearAfter(() => incus.action(name, action))
+  )
   ctx.handle('incusInspect', (name: string) => incus.inspect(name))
-  ctx.handle('incusImages', () => incus.images())
-  ctx.handle('incusProfiles', () => incus.profiles())
-  ctx.handle('incusNetworks', () => incus.networks())
-  ctx.handle('incusPools', () => incus.pools())
+  ctx.handle('incusImages', () => cached('incus:images', () => incus.images()))
+  ctx.handle('incusProfiles', () => cached('incus:profiles', () => incus.profiles()))
+  ctx.handle('incusNetworks', () => cached('incus:networks', () => incus.networks()))
+  ctx.handle('incusPools', () => cached('incus:pools', () => incus.pools()))
 
   ctx.handle('tags', () => tags.list())
   ctx.handle('tagMembers', (id: string) => tags.members(id))
@@ -118,22 +145,32 @@ const activate: ModuleActivate = (ctx) => {
   ctx.handle('jobCancel', (id: string) => jobs.cancel(id))
   ctx.handle('jobsClear', () => jobs.clearFinished())
   ctx.handle('bulkContainerAction', (keys: string[], action: string) =>
-    bulk.dockerSelection(keys, action)
+    clearAfter(() => bulk.dockerSelection(keys, action))
   )
-  ctx.handle('bulkIncusAction', (keys: string[], action: string) => bulk.incusSelection(keys, action))
+  ctx.handle('bulkIncusAction', (keys: string[], action: string) =>
+    clearAfter(() => bulk.incusSelection(keys, action))
+  )
   ctx.handle('bulkActionCheck', (values: unknown) => bulk.check(values))
-  ctx.handle('bulkActionApply', (payload: unknown) => bulk.apply(payload))
+  ctx.handle('bulkActionApply', (payload: unknown) =>
+    clearAfter(() => bulk.apply(payload))
+  )
 
   ctx.handle('selectOptions', (kind: string) => options.list(kind))
   ctx.handle('templates', () => listTemplates(hostStore))
   ctx.handle('templateDelete', (id: string) => deleteTemplate(hostStore, id))
 
   ctx.handle('createDockerCheck', (values: unknown) => dockerCreator.check(values))
-  ctx.handle('createDockerApply', (payload: unknown) => dockerCreator.apply(payload))
+  ctx.handle('createDockerApply', (payload: unknown) =>
+    clearAfter(() => dockerCreator.apply(payload))
+  )
   ctx.handle('createIncusCheck', (values: unknown) => incusCreator.check(values))
-  ctx.handle('createIncusApply', (payload: unknown) => incusCreator.apply(payload))
+  ctx.handle('createIncusApply', (payload: unknown) =>
+    clearAfter(() => incusCreator.apply(payload))
+  )
   ctx.handle('networkCreateCheck', (values: unknown) => networkCreator.check(values))
-  ctx.handle('networkCreateApply', (payload: unknown) => networkCreator.apply(payload))
+  ctx.handle('networkCreateApply', (payload: unknown) =>
+    clearAfter(() => networkCreator.apply(payload))
+  )
 
   ctx.handle('rulesEffective', () => rulesEditor.effective())
   ctx.handle('rulesCheck', (values: unknown) => rulesEditor.check(values))
@@ -157,7 +194,9 @@ const activate: ModuleActivate = (ctx) => {
   return {
     applyPollers() {
       const fast = ctx.fastIntervalMs('container')
-      if (ctx.connected && fast > 0) service.poller.start(fast)
+      const mode = ctx.detailMode('container')
+      const wanted = mode === 'always' || (mode === 'tab' && ctx.tabActive)
+      if (ctx.connected && wanted && fast > 0) service.poller.start(fast)
       else service.poller.stop()
 
       const slowSec = Math.max(0, ctx.slowIntervalSec(STORAGE_TARGET))

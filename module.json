@@ -2,7 +2,7 @@
   "apiVersion": 2,
   "id": "container",
   "name": "Container",
-  "version": "3.1.1",
+  "version": "3.1.3",
   "description": "Docker and Incus side by side: containers with CPU, memory, network and block I/O, inspect with logs and an exec shell, images, volumes and networks - plus tags, bulk create and bulk actions with a check step before anything runs, and installing either runtime on a machine that has neither.",
   "author": "Bored Manager",
   "minAppVersion": "0.2.0",

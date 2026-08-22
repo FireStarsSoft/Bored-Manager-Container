@@ -2,6 +2,14 @@
 
 All notable changes to the Container module (called Docker before 3.0.0). Versions are independent of the app's.
 
+## 3.1.3
+
+- Adds an opt-in “while page/card is visible” mode for the fast Docker/Incus metrics poller. The default remains Always, and the slow storage inventory continues independently.
+
+## 3.1.2
+
+- Coalesces duplicate Docker inspect and Docker/Incus inventory reads from one visible page, while actions still run immediately and invalidate cached reads.
+
 ## 3.1.1
 
 - Container and Incus row actions refuse an unknown verb before a command is built, so a bad RPC argument cannot reach the shell.
