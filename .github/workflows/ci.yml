@@ -1,0 +1,23 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # sdk:check first: everything after it typechecks and compiles against the
+      # vendored copy of the app's shared/, so a locally edited copy would make
+      # the rest of this job answer for a module the app cannot actually run.
+      - run: npm run check
+      # The zip is what people install, and packaging applies the installer's
+      # own rules to the folder. Building one here means a release cannot fail
+      # for a reason this job could have found first.
+      - run: npm run pack

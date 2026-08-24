@@ -1,0 +1,53 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      # container/module.json is the only place the version lives - the app reads
+      # it from there, so the tag has to agree with it rather than the other way
+      # round.
+      - name: Verify tag matches the module version
+        run: |
+          VERSION="$(node -p 'require("./container/module.json").version')"
+          test "$GITHUB_REF_NAME" = "v$VERSION" || {
+            echo "tag $GITHUB_REF_NAME does not match container/module.json version $VERSION" >&2
+            exit 1
+          }
+      - run: npm ci
+      # A tag publishes straight from this job, so everything main's CI would
+      # have rejected has to be rejected here too.
+      - run: npm run check
+      - run: npm run pack
+      # Exactly one .zip may be attached: the app picks a module archive by "the
+      # only zip asset attached", so a second one turns every install into an
+      # error rather than a guess.
+      - name: Publish
+        run: |
+          set -euo pipefail
+          ZIPS=(dist/*.zip)
+          test "${#ZIPS[@]}" -eq 1 || { echo "expected exactly one zip, got ${ZIPS[*]}" >&2; exit 1; }
+          SHA="$(cut -d' ' -f1 < "${ZIPS[0]}.sha256")"
+          {
+            echo 'Install from **Settings → Modules** in Bored Manager: the catalog entry,'
+            echo 'the repository `FireStarsSoft/Bored-Manager-Container`, or the archive below.'
+            echo
+            echo "sha256 of \`$(basename "${ZIPS[0]}")\`:"
+            echo
+            echo '```'
+            echo "$SHA"
+            echo '```'
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" "${ZIPS[0]}" "${ZIPS[0]}.sha256" \
+            --title "$GITHUB_REF_NAME" --notes-file notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}

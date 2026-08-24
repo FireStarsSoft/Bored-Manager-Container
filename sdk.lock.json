@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "repo": "FireStarsSoft/Bored-Manager",
+  "ref": "v0.4.1",
+  "files": [
+    {
+      "from": "shared/app-settings.ts",
+      "to": "shared/app-settings.ts",
+      "sha256": "52f576330d3f342fa502810d349c6d59398c73f201879bfec86a8c0e8afd80a7"
+    },
+    {
+      "from": "shared/cache.ts",
+      "to": "shared/cache.ts",
+      "sha256": "aeaf8671a68042ec96c23872bd47ba25d8290f960c636baf87d853b0a9ae5a4c"
+    },
+    {
+      "from": "shared/check.ts",
+      "to": "shared/check.ts",
+      "sha256": "c1f1d617b546a965f1f392f46ea0c2543f2e3d6c863219ecf2d4f50b36fb3c89"
+    },
+    {
+      "from": "shared/module-ui.ts",
+      "to": "shared/module-ui.ts",
+      "sha256": "13190174b20aa9c8698085ab16a00a7020d5690b5cd2b42d3a0075e40f267d88"
+    },
+    {
+      "from": "shared/modules.ts",
+      "to": "shared/modules.ts",
+      "sha256": "5b766945b4b0aa7e249d67a12bb3a69283335470c16eabb2416f0d59e6c5236e"
+    },
+    {
+      "from": "shared/rpc.ts",
+      "to": "shared/rpc.ts",
+      "sha256": "c9abae5a8b13e1a2324ef332e2f4d6c3aea60deecc8f0f6f8be4018843b3167b"
+    },
+    {
+      "from": "shared/shell.ts",
+      "to": "shared/shell.ts",
+      "sha256": "c18e902eb93a02de53b602778e01ce3163a4ce604658a9bf9bf7c66a2dd2b90c"
+    },
+    {
+      "from": "shared/ss.ts",
+      "to": "shared/ss.ts",
+      "sha256": "ca3076c7ada784ce8a42a7a752183723f475f3c82c476b652f437505e4fc14a9"
+    },
+    {
+      "from": "shared/types.ts",
+      "to": "shared/types.ts",
+      "sha256": "f4ee43bc2d8e874d3e83fcd678d32bc390a6c52ab1f8684f1cf80a931314fa03"
+    },
+    {
+      "from": "shared/validation.ts",
+      "to": "shared/validation.ts",
+      "sha256": "ce91eb5b4d3fb3a6f4ca1d4de9b7baf88250bd852c8b2ad6d317516dab7e1b37"
+    },
+    {
+      "from": "server/services/module-compiler.ts",
+      "to": "vendor/module-compiler.ts",
+      "sha256": "63307218d0c509becbc57ec9133b16b154d6afb99a02cc920134254ad505e910"
+    },
+    {
+      "from": "tests/helpers/module-harness.ts",
+      "to": "tests/helpers/module-harness.ts",
+      "sha256": "fa31d112f07d6f79ed020f6782c5befe672734da11717f2504a32d66cd8777b1"
+    }
+  ]
+}

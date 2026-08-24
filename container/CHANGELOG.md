@@ -2,6 +2,19 @@
 
 All notable changes to the Container module (called Docker before 3.0.0). Versions are independent of the app's.
 
+## 3.1.13
+
+- **The module now lives in its own repository** and is installed rather than
+  shipped: [FireStarsSoft/Bored-Manager-Container](https://github.com/FireStarsSoft/Bored-Manager-Container).
+  Bored Manager 0.4.2 is the first release that does not bundle it - get it from
+  Settings → Modules (the official list, `FireStarsSoft/Bored-Manager-Container`, or the
+  release zip). An install that already has 3.1.12 keeps working untouched
+  across the app update, and updating to 3.1.13 keeps its tags, rules, saved hosts and history:
+  nothing about the module's behaviour, manifest ids or stored shapes changed
+  here.
+- README: an Installing section, since the module is no longer in the app
+  download, and a link back to the repository.
+
 ## 3.1.12
 
 - Removed the dead `jobs` method. The Fleet pages read the `jobs` stream, and

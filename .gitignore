@@ -1,0 +1,9 @@
+node_modules/
+dist/
+# esbuild output for the module's main half. Rebuilt on demand by the app that
+# installs it, deliberately kept out of the release zip, and skipped by the
+# folder hash - so it is never source.
+container/.dist/
+*.log
+.claude/
+.cursor/

@@ -1,0 +1,32 @@
+{
+  // Mirrors the app's tsconfig.node.json for everything that touches the
+  // module's main half, so a type error here is a type error there. `@shared/*`
+  // resolves to the vendored copy of the app's shared/ folder, which is exactly
+  // what the host's compiler resolves it to at install time
+  // (server/services/module-compiler.ts, scopeGuardPlugin).
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023"],
+    "types": ["node", "vitest/globals"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@shared/*": ["./shared/*"]
+    }
+  },
+  "include": [
+    "container/main/**/*.ts",
+    "shared/**/*.ts",
+    "vendor/**/*.ts",
+    "tests/**/*.ts",
+    "vitest.config.ts"
+  ]
+}

@@ -2,6 +2,21 @@
 
 Docker and Incus on the target machine, side by side: what is running, what it costs, and the bulk operations that would otherwise be a shell loop — each one behind a check step that says what would happen before it happens.
 
+## Installing
+
+This module is not part of the app download. Install it from **Settings →
+Modules**, by any of:
+
+- **Official list** - pick *Container* from the list the app ships;
+- **GitHub repo** - `FireStarsSoft/Bored-Manager-Container`, which installs the
+  latest release;
+- **From file** - the `container-<version>.zip` attached to a
+  [release](https://github.com/FireStarsSoft/Bored-Manager-Container/releases).
+
+It needs Bored Manager **0.2.0** or newer, and installs switched off; enable
+it in the same place. Source, issues and changelog live in
+[FireStarsSoft/Bored-Manager-Container](https://github.com/FireStarsSoft/Bored-Manager-Container).
+
 ## What it adds
 
 | Where | What |
