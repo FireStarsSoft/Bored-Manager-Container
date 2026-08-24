@@ -1,0 +1,8 @@
+# Everything in this repo is LF, on every platform.
+#
+# container/ is the folder the app installs and it is hashed byte for byte
+# (server/services/modules-host.ts in Bored Manager), so a CRLF checkout would
+# hash differently from the release zip and the host would call the module
+# 'modified' and refuse to activate it. shared/ and vendor/ are copies of app
+# files whose hashes sdk.lock.json records, which has the same requirement.
+* text=auto eol=lf
