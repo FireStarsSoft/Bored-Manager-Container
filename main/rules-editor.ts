@@ -3,6 +3,11 @@
  * changing them through the same check-then-apply step everything else here
  * uses. Leaving a field empty removes the override, so "back to the default"
  * needs no separate control per rule.
+ *
+ * These are guard rails on the module itself (`ctx.configGet/Set`), not on
+ * the connected machine: saving here changes the rule for Container on every
+ * machine this app is connected to, including ones connected later. Nothing
+ * about that is per-host data.
  */
 import type { ModuleCheckFinding, ModuleCheckReport } from '@shared/check'
 import { createCheckSession } from '@shared/check'

@@ -107,15 +107,11 @@ function healthFromStatus(status: string | undefined): string {
   return m ? m[2].toLowerCase() : ''
 }
 
-/**
- * Docker timestamps are RFC 3339; the zero value means "never happened".
- * Formatted here rather than left as a number: a `keyValue` row has no
- * date/time format to apply itself, only bytes/rate/pct/temp/number/text.
- */
-function dockerTimeLabel(raw: unknown): string {
-  if (typeof raw !== 'string' || !raw || raw.startsWith('0001-01-01')) return ''
+/** Docker timestamps are RFC 3339; the zero value means "never happened". */
+function dockerTimeMs(raw: unknown): number | null {
+  if (typeof raw !== 'string' || !raw || raw.startsWith('0001-01-01')) return null
   const ms = Date.parse(raw)
-  return Number.isFinite(ms) ? new Date(ms).toLocaleString() : ''
+  return Number.isFinite(ms) ? ms : null
 }
 
 /**
@@ -222,6 +218,16 @@ export class ContainerService {
     this.poller.stop()
     this.slowPoller.stop()
     for (const id of [...this.logStreams.keys()]) this.stopLogs(id)
+  }
+
+  /**
+   * Run one listing tick right now, off the poller's schedule. For work that
+   * has to act on what is on the machine *now* rather than on whatever the
+   * last tick happened to see - a bulk check resolving "every stopped
+   * container tagged web" while the fast interval is paused, say.
+   */
+  async sampleNow(): Promise<void> {
+    await this.sample()
   }
 
   /** Run one disk-usage tick right now (manual refresh button). */
@@ -507,9 +513,9 @@ export class ContainerService {
       image: String(raw.Config?.Image ?? ''),
       imageId: String(raw.Image ?? ''),
       command: [raw.Path ?? '', ...(raw.Args ?? [])].join(' ').trim(),
-      createdAt: dockerTimeLabel(raw.Created),
-      startedAt: dockerTimeLabel(raw.State?.StartedAt),
-      finishedAt: dockerTimeLabel(raw.State?.FinishedAt),
+      createdAt: dockerTimeMs(raw.Created),
+      startedAt: dockerTimeMs(raw.State?.StartedAt),
+      finishedAt: dockerTimeMs(raw.State?.FinishedAt),
       state: String(raw.State?.Status ?? ''),
       exitCode: typeof raw.State?.ExitCode === 'number' ? raw.State.ExitCode : null,
       restartCount: raw.RestartCount ?? 0,
@@ -571,10 +577,6 @@ export class ContainerService {
 
   pruneNetworks(): Promise<OkResult> {
     return this.action('docker network prune -f')
-  }
-
-  pruneSystem(): Promise<OkResult> {
-    return this.action('docker system prune -f')
   }
 
   // ---------- Log streaming ----------

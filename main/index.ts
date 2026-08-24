@@ -61,7 +61,9 @@ const activate: ModuleActivate = (ctx) => {
 
   const live: LiveContainers = {
     docker: () => service.history.at(-1)?.containers ?? [],
-    incus: () => service.incusLatest?.instances ?? []
+    incus: () => service.incusLatest?.instances ?? [],
+    sampledAt: () => service.history.at(-1)?.t ?? null,
+    refresh: () => service.sampleNow()
   }
 
   const jobs = new FleetJobs(ctx, hostStore)
@@ -141,7 +143,6 @@ const activate: ModuleActivate = (ctx) => {
     tags.bulk(keys, engine, mode, tagName)
   )
 
-  ctx.handle('jobs', () => jobs.snapshot())
   ctx.handle('jobCancel', (id: string) => jobs.cancel(id))
   ctx.handle('jobsClear', () => jobs.clearFinished())
   ctx.handle('bulkContainerAction', (keys: string[], action: string) =>
@@ -172,7 +173,12 @@ const activate: ModuleActivate = (ctx) => {
     clearAfter(() => networkCreator.apply(payload))
   )
 
-  ctx.handle('rulesEffective', () => rulesEditor.effective())
+  // The rules-in-force keyValue on Module settings used to poll rulesEffective
+  // on the fast interval just to notice a save; onConfigChange already fires
+  // for every write (this instance's own rulesApply/rulesReset included, see
+  // its doc comment), so pushing a `rules` event from there is instant and
+  // costs nothing while nobody has touched the rules.
+  ctx.onConfigChange(() => ctx.emit('rules', rulesEditor.effective()))
   ctx.handle('rulesCheck', (values: unknown) => rulesEditor.check(values))
   ctx.handle('rulesApply', (payload: unknown) => rulesEditor.apply(payload))
   ctx.handle('rulesReset', () => rulesEditor.reset())
@@ -226,7 +232,8 @@ const activate: ModuleActivate = (ctx) => {
         series: service.seriesHistory,
         storage: service.slowLatest,
         jobs: jobs.snapshot(),
-        install: installer.status()
+        install: installer.status(),
+        rules: rulesEditor.effective()
       }
     },
     slowTargets() {

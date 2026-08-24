@@ -71,7 +71,7 @@
             { "key": "createdAt", "label": "Created", "format": "duration", "align": "right" }
           ],
           "sortDefault": { "key": "memberCount", "dir": "desc" },
-          "filterKeys": ["name", "description"],
+          "filterKeys": ["nameBadge", "description"],
           "emptyText": "No tags yet",
           "rowActions": [
             {

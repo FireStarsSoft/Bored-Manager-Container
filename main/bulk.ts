@@ -50,6 +50,10 @@ interface BulkPlan {
 export interface LiveContainers {
   docker(): DockerContainer[]
   incus(): IncusInstance[]
+  /** When the two listings above were taken, or null if nothing has been sampled yet. */
+  sampledAt(): number | null
+  /** One listing tick off the poller's schedule, for a check that would otherwise match against a stale (or empty) list. */
+  refresh(): Promise<void>
 }
 
 function text(values: unknown, key: string): string {
@@ -104,7 +108,7 @@ export class BulkRunner {
 
   // ---------- From a description ----------
 
-  check(input: unknown): ModuleCheckReport {
+  async check(input: unknown): Promise<ModuleCheckReport> {
     const rules = effectiveRules(this.ctx)
     const findings: ModuleCheckFinding[] = []
     const engine = (text(input, 'engine') || 'docker') as BulkEngine
@@ -125,6 +129,7 @@ export class BulkRunner {
     }
     if (!value) findings.push({ level: 'error', label: 'A value to match on is required' })
 
+    await this.freshenListing(findings)
     const targets = this.resolve(engine, targetBy, value)
     if (targets.length === 0) {
       findings.push({
@@ -176,6 +181,51 @@ export class BulkRunner {
         ? this.startDocker(plan.action, plan.targets, plan.concurrency, plan.onError)
         : this.startIncus(plan.action, plan.targets, plan.concurrency, plan.onError)
     return { ok: true, data: job }
+  }
+
+  /**
+   * The listings this resolves against come from the module's own poller, so
+   * they are only as fresh as the interval - and with the container interval
+   * paused, or the page never having been open, there is no listing at all
+   * and every criterion reports "Nothing matches that". One tick on demand
+   * costs a single `docker ps` and makes the report say what is actually on
+   * the machine; the age goes into the findings either way, because what the
+   * user is agreeing to is a list frozen at check time.
+   */
+  private async freshenListing(findings: ModuleCheckFinding[]): Promise<void> {
+    // The form is not filled in properly yet - that is answered without
+    // sending anything to the machine.
+    if (findings.some((f) => f.level === 'error')) return
+    const interval = this.ctx.fastIntervalMs('container')
+    // A paused interval means nothing refreshes it on its own, so any listing
+    // is by definition stale.
+    const maxAgeMs = interval > 0 ? interval * 2 : 0
+    const before = this.live.sampledAt()
+    if (before == null || Date.now() - before > maxAgeMs) {
+      try {
+        await this.live.refresh()
+      } catch (err) {
+        findings.push({
+          level: 'warning',
+          label: 'Could not re-read the container list',
+          detail: err instanceof Error ? err.message : String(err)
+        })
+      }
+    }
+    const at = this.live.sampledAt()
+    if (at == null) {
+      findings.push({
+        level: 'warning',
+        label: 'No container listing is available',
+        detail: 'Nothing has been read from this machine yet, so nothing can be matched.'
+      })
+      return
+    }
+    findings.push({
+      level: 'info',
+      label: `Matched against a listing ${Math.max(0, Math.round((Date.now() - at) / 1000))}s old`,
+      detail: 'The list below is frozen now and is exactly what Apply will act on.'
+    })
   }
 
   private resolve(engine: BulkEngine, targetBy: string, value: string): BulkTarget[] {

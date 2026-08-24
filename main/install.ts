@@ -38,6 +38,14 @@ export interface InstallState {
   log: string[]
 }
 
+/**
+ * What the `install` stream carries: the three fields the page shows, and not
+ * the log. The output already goes out line by line on `installlog`, so
+ * putting the whole buffer in here too meant every chunk of a five-minute
+ * `apt-get` re-broadcast up to 500 lines to every connected browser.
+ */
+export type InstallStatus = Omit<InstallState, 'log'>
+
 interface Facts {
   manager: 'apt' | 'dnf' | 'pacman' | 'none'
   dockerPresent: boolean
@@ -94,8 +102,9 @@ export class RuntimeInstaller {
     this.state = { running: false, kind: null, ok: null, log: [] }
   }
 
-  status(): InstallState {
-    return { ...this.state, log: [...this.state.log] }
+  status(): InstallStatus {
+    const { running, kind, ok } = this.state
+    return { running, kind, ok }
   }
 
   /**
@@ -216,6 +225,8 @@ export class RuntimeInstaller {
 
     this.cancelled = false
     this.state = { running: true, kind: plan.kind, ok: null, log: [] }
+    // The start of a run is one of the three transitions the page follows.
+    this.emit()
     this.push(`# ${plan.command}`)
     try {
       const handle = await this.ctx.streamSudo(`${plan.command} 2>&1`)
@@ -229,9 +240,9 @@ export class RuntimeInstaller {
         this.state.running = false
         this.state.ok = code === 0
         this.push(code === 0 ? `# done` : `# exited with code ${code ?? 'unknown'}`)
+        this.emit()
         this.ctx.log(`${plan.kind} install ${code === 0 ? 'succeeded' : `failed (code ${code})`}`)
       })
-      this.emit()
       return { ok: true }
     } catch (err) {
       this.state = { running: false, kind: plan.kind, ok: false, log: [...this.state.log, String(err)] }
@@ -247,6 +258,7 @@ export class RuntimeInstaller {
     this.state.running = false
     this.state.ok = false
     this.push('# cancelled')
+    this.emit()
     return { ok: true }
   }
 
@@ -282,9 +294,10 @@ export class RuntimeInstaller {
       this.state.log.splice(0, this.state.log.length - MAX_LINES)
     }
     // The page tails this as a log block, so lines are pushed as they arrive as
-    // well as kept for a page that is opened later.
+    // well as kept for a page that is opened later. The `install` state is not
+    // re-sent here: nothing in it changed, and the callers that do change it
+    // emit for themselves.
     this.ctx.emit('installlog', text)
-    this.emit()
   }
 
   private emit(): void {

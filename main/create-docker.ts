@@ -500,9 +500,14 @@ export class DockerCreator {
     if (plan.tag) {
       // Attaching as they finish would mean a write per container; the job is
       // short enough that one write at the end is both cheaper and atomic.
-      void whenFinished(this.jobs, job.id).then(() => {
-        if (created.length) this.tags.ensureAndAttach(plan.tag, created.map(dockerRef))
-      })
+      void whenFinished(this.jobs, job.id)
+        .then(() => {
+          // The module may have been switched off while the job ran, and
+          // attaching a tag writes to its host data through a revoked ctx.
+          if (this.jobs.disposed) return
+          if (created.length) this.tags.ensureAndAttach(plan.tag, created.map(dockerRef))
+        })
+        .catch(() => undefined)
     }
 
     return { ok: true, data: job.id }

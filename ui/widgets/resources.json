@@ -4,6 +4,7 @@
       "type": "section",
       "title": "Container resources",
       "slowTarget": "container",
+      "slowAt": { "kind": "stream", "event": "storage", "path": "t" },
       "blocks": [
         {
           "type": "keyValue",

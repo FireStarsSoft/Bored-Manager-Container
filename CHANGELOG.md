@@ -2,6 +2,75 @@
 
 All notable changes to the Container module (called Docker before 3.0.0). Versions are independent of the app's.
 
+## 3.1.12
+
+- Removed the dead `jobs` method. The Fleet pages read the `jobs` stream, and
+  a surface opened mid-run is seeded from `snapshots()` - nothing ever called
+  the method, so it was unreachable surface.
+
+## 3.1.11
+
+- Removed two pieces of code nothing could reach: a `docker system prune`
+  helper no page or manifest method called, and a helper that worked out which
+  rules had been overridden for a column the rules editor does not render.
+
+## 3.1.10
+
+- **Fixed: a bulk action by tag, state, name or image reported "Nothing
+  matches that" whenever the container interval was paused or the page had
+  not been open long enough to poll.** The check now takes one listing of its
+  own when the last one is missing or older than two intervals, and says in
+  its findings how old the list it froze is.
+- Performance: installing Docker or Incus from the settings page re-sent the
+  whole install state - up to 500 buffered output lines - to every connected
+  browser on every chunk of output. The output already has its own stream; the
+  state is now sent when it changes (start, finish, cancel) and carries only
+  the three fields the page reads.
+
+## 3.1.9
+
+- Fixed: the Images & storage and Incus pages exec'd `docker images`, `docker volume ls`, `docker network ls` and the four `incus ... list` commands every fast tick (2 s by default) while their page was open, on top of the module's own collector - 4-5x the rate the README and the module's own comments describe ("pulled on demand, never polled"). Those seven listings now load once when their page becomes visible; a row action already refetches its own table afterwards.
+- Fixed: the "Rules in force" panel on Module settings re-read module-config.json on the same fast tick for a value that only changes when Save/Reset is pressed. It is now pushed the moment the rules change (by this browser or another one already open on a different connected machine) instead of polled.
+
+## 3.1.8
+
+- **Fixed: a container's Created/Started/Finished times in its inspect panel
+  were rendered in the server's own locale/timezone, not the viewer's.** They
+  read in the viewer's own locale now.
+
+## 3.1.7
+
+- **Fixed: every "Disk usage" section's refresh button (Dashboard, Docker,
+  Images, and the Container resources widget) always showed "never" for its
+  age**, even right after the storage snapshot had just refreshed - the
+  sections had a refresh control but nothing feeding it a timestamp. They now
+  resolve the age from the storage stream's own `t`.
+
+## 3.1.6
+
+- **Fixed: the two "History" charts on Dashboard (Running containers; Docker
+  CPU and memory) were empty at every chart window under 30 minutes**, and
+  even above that only ever showed archived data with no movement between
+  refetches. They now show data at any window and keep moving, by tying to
+  the module's own live `series` stream.
+
+## 3.1.5
+
+- **The Containers card's sparkline plots running containers**, which is what
+  the number above it counts. It was plotting CPU.
+
+## 3.1.4
+
+- **Fixed: a Fleet job still running when the module stopped could take the
+  server down.** Disabling or reloading the module - or the machine
+  disconnecting - while a bulk action or a create job was mid `docker pull`
+  left that job to finish against a context the app had already revoked. Its
+  progress push, its log line, the tag it attaches on completion and the
+  poll that waits for it all threw from a promise nobody was holding, which
+  ended the whole server process and with it every other machine, terminal
+  and browser. Everything a job does after an await now stops when the module
+  has stopped.
+
 ## 3.1.3
 
 - Adds an opt-in “while page/card is visible” mode for the fast Docker/Incus metrics poller. The default remains Always, and the slow storage inventory continues independently.

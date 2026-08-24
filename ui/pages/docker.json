@@ -43,6 +43,7 @@
           "title": "Disk usage",
           "columns": 3,
           "slowTarget": "container",
+          "slowAt": { "kind": "stream", "event": "storage", "path": "t" },
           "blocks": [
             {
               "type": "stat",
@@ -101,7 +102,7 @@
         { "key": "ports", "label": "Ports" }
       ],
       "sortDefault": { "key": "cpuPct", "dir": "desc" },
-      "filterKeys": ["name", "image", "status", "tagsText"],
+      "filterKeys": ["name", "image", "status", "tagBadges"],
       "emptyText": "No containers",
       "bulkActions": [
         { "label": "Start", "method": "bulkContainerAction", "args": ["start"] },
@@ -146,9 +147,9 @@
             { "key": "health.status", "label": "Health" },
             { "key": "health.failingStreak", "label": "Health failures in a row", "format": "number" },
             { "key": "health.lastOutput", "label": "Last healthcheck output" },
-            { "key": "createdAt", "label": "Created" },
-            { "key": "startedAt", "label": "Started" },
-            { "key": "finishedAt", "label": "Finished" },
+            { "key": "createdAt", "label": "Created", "format": "datetime" },
+            { "key": "startedAt", "label": "Started", "format": "datetime" },
+            { "key": "finishedAt", "label": "Finished", "format": "datetime" },
             { "key": "composeProject", "label": "Compose project" },
             { "key": "composeService", "label": "Compose service" },
             { "key": "tagBadges", "label": "Tags", "format": "badges" }

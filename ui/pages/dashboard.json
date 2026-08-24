@@ -63,7 +63,7 @@
           "type": "chart",
           "title": "Running containers",
           "kind": "area",
-          "source": { "kind": "history", "stream": "container", "keys": ["running", "incusRunning"] },
+          "source": { "kind": "history", "stream": "container", "keys": ["running", "incusRunning"], "liveEvent": "series" },
           "series": [
             { "key": "running", "label": "Docker" },
             { "key": "incusRunning", "label": "Incus" }
@@ -74,7 +74,7 @@
           "type": "chart",
           "title": "Docker CPU and memory",
           "kind": "line",
-          "source": { "kind": "history", "stream": "container", "keys": ["cpu", "mem"] },
+          "source": { "kind": "history", "stream": "container", "keys": ["cpu", "mem"], "liveEvent": "series" },
           "series": [
             { "key": "cpu", "label": "CPU", "unit": "%" },
             { "key": "mem", "label": "Memory", "unit": "%" }
@@ -88,6 +88,7 @@
       "title": "Disk usage",
       "columns": 4,
       "slowTarget": "container",
+      "slowAt": { "kind": "stream", "event": "storage", "path": "t" },
       "blocks": [
         {
           "type": "stat",

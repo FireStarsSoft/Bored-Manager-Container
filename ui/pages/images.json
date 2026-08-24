@@ -6,7 +6,7 @@
       "blocks": [
         {
           "type": "table",
-          "source": { "kind": "invoke", "method": "images", "intervalKey": "container" },
+          "source": { "kind": "invoke", "method": "images" },
           "rowKey": "key",
           "columns": [
             { "key": "repository", "label": "Repository" },
@@ -49,7 +49,7 @@
       "blocks": [
         {
           "type": "table",
-          "source": { "kind": "invoke", "method": "volumes", "intervalKey": "container" },
+          "source": { "kind": "invoke", "method": "volumes" },
           "columns": [
             { "key": "name", "label": "Name" },
             { "key": "driver", "label": "Driver" }
@@ -86,7 +86,7 @@
       "blocks": [
         {
           "type": "table",
-          "source": { "kind": "invoke", "method": "networks", "intervalKey": "container" },
+          "source": { "kind": "invoke", "method": "networks" },
           "columns": [
             { "key": "name", "label": "Name" },
             { "key": "driver", "label": "Driver" },
@@ -123,6 +123,7 @@
       "title": "Disk usage (docker system df)",
       "columns": 4,
       "slowTarget": "container",
+      "slowAt": { "kind": "stream", "event": "storage", "path": "t" },
       "blocks": [
         {
           "type": "keyValue",

@@ -119,7 +119,7 @@
       "blocks": [
         {
           "type": "keyValue",
-          "source": { "kind": "invoke", "method": "rulesEffective", "intervalKey": "container" },
+          "source": { "kind": "stream", "event": "rules" },
           "rows": [
             { "key": "maxCreateCount", "label": "Largest create job" },
             { "key": "preferIncusThreshold", "label": "Suggest Incus at" },
@@ -203,6 +203,11 @@
               "kind": "danger"
             }
           ]
+        },
+        {
+          "type": "section",
+          "title": "These apply to Container on every machine this app connects to, not just the one open right now.",
+          "blocks": []
         }
       ]
     },

@@ -73,19 +73,3 @@ export function effectiveRules(ctx: ModuleContext): ContainerRules {
   }
   return out
 }
-
-/** Which rules the user has actually overridden, for the "50 (default)" column. */
-export function overriddenRuleKeys(ctx: ModuleContext): Set<string> {
-  const raw = ctx.configGet()
-  const overrides = (raw as { rules?: unknown } | null)?.rules
-  if (typeof overrides !== 'object' || overrides === null) return new Set()
-  const effective = effectiveRules(ctx)
-  const out = new Set<string>()
-  for (const key of Object.keys(DEFAULT_RULES)) {
-    const value = (overrides as Record<string, unknown>)[key]
-    if (value === undefined) continue
-    if (effective[key as keyof ContainerRules] !== DEFAULT_RULES[key as keyof ContainerRules]) out.add(key)
-    else if (value === DEFAULT_RULES[key as keyof ContainerRules]) out.add(key)
-  }
-  return out
-}

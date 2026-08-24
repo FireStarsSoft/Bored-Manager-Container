@@ -348,9 +348,14 @@ export class IncusCreator {
     })
 
     if (plan.tag) {
-      void whenFinished(this.jobs, job.id).then(() => {
-        if (created.length) this.tags.ensureAndAttach(plan.tag, created.map(incusRef))
-      })
+      void whenFinished(this.jobs, job.id)
+        .then(() => {
+          // The module may have been switched off while the job ran, and
+          // attaching a tag writes to its host data through a revoked ctx.
+          if (this.jobs.disposed) return
+          if (created.length) this.tags.ensureAndAttach(plan.tag, created.map(incusRef))
+        })
+        .catch(() => undefined)
     }
 
     return { ok: true, data: job.id }

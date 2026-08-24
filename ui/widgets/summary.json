@@ -9,7 +9,7 @@
           "label": "Running containers",
           "source": { "kind": "stream", "event": "snapshot", "path": "running" },
           "format": "number",
-          "spark": { "source": { "kind": "stream", "event": "series" }, "key": "cpu" }
+          "spark": { "source": { "kind": "stream", "event": "series" }, "key": "running" }
         },
         {
           "type": "list",

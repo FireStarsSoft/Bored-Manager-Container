@@ -64,6 +64,13 @@ export class FleetJobs {
   private cancelling = new Set<string>()
   private lastEmit = 0
   private emitTimer: ReturnType<typeof setTimeout> | null = null
+  /**
+   * True once the module has been stopped. Every ctx member is revoked then,
+   * so anything still in flight returns quietly instead of reporting,
+   * logging or persisting - a throw from a promise nobody awaits used to take
+   * the whole server down.
+   */
+  private stopped = false
 
   constructor(
     private ctx: ModuleContext,
@@ -86,15 +93,27 @@ export class FleetJobs {
    * slightly late stop) and nothing after it starts.
    */
   dispose(): void {
+    // Set first: a run() sitting in `docker pull` returns here when it comes
+    // back, and whenFinished stops polling. The context is revoked as soon as
+    // dispose() returns, so a late emit, log or host-data write would reject
+    // from a promise nobody holds - which used to end the server process.
+    this.stopped = true
     for (const job of this.live) this.cancelling.add(job.id)
     this.live = []
     if (this.emitTimer) clearTimeout(this.emitTimer)
     this.emitTimer = null
   }
 
+  /** Whether the module has been stopped, for the pollers that follow a job. */
+  get disposed(): boolean {
+    return this.stopped
+  }
+
   /** The connection these were running against has gone; they cannot be resumed. */
   reset(): void {
     this.dispose()
+    // The instance itself lives on after a reset - only the machine changed.
+    this.stopped = false
   }
 
   start(spec: JobSpec): FleetJob {
@@ -118,7 +137,11 @@ export class FleetJobs {
     }
     this.live.unshift(job)
     this.emit(true)
-    void this.run(job, spec)
+    // Nothing awaits this: the job outlives the call that started it, so it
+    // has to own its own failures.
+    void this.run(job, spec).catch((err) => {
+      if (!this.stopped) this.ctx.log(`job ${job.id} failed: ${message(err)}`)
+    })
     return job
   }
 
@@ -194,8 +217,14 @@ export class FleetJobs {
         await Promise.all(workers)
       }
     } catch (err) {
+      if (this.stopped) return
       this.ctx.log(`job ${job.id} stopped unexpectedly: ${message(err)}`)
     }
+
+    // The module may have been switched off, reloaded or disconnected while
+    // an item was in flight: there is nobody to report to and nowhere to
+    // write any more.
+    if (this.stopped) return
 
     job.finishedAt = Date.now()
     job.progressPct = 100
@@ -246,6 +275,7 @@ export class FleetJobs {
    * push is skipped, so the last state of a burst is never the one dropped.
    */
   private emit(now = false): void {
+    if (this.stopped) return
     const since = Date.now() - this.lastEmit
     if (!now && since < EMIT_THROTTLE_MS) {
       if (!this.emitTimer) {
@@ -273,6 +303,13 @@ export class FleetJobs {
 export function whenFinished(jobs: FleetJobs, id: string): Promise<void> {
   return new Promise((resolve) => {
     const tick = (): void => {
+      // `jobs.list()` reads the host store, which is a ctx call - once the
+      // module is gone this poll has to stop rather than throw inside a timer
+      // (an uncaught exception, not even a rejection).
+      if (jobs.disposed) {
+        resolve()
+        return
+      }
       const job = jobs.list().find((j) => j.id === id)
       if (!job || job.state !== 'running') {
         resolve()

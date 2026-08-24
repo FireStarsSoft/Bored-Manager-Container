@@ -41,7 +41,7 @@
             { "key": "tagBadges", "label": "Tags", "format": "badges" }
           ],
           "sortDefault": { "key": "name", "dir": "asc" },
-          "filterKeys": ["name", "status", "image", "ipv4Text", "profilesText", "tagsText"],
+          "filterKeys": ["name", "status", "image", "ipv4Text", "profilesText", "tagBadges"],
           "groupModes": [{ "id": "type", "label": "By type", "key": "type" }],
           "emptyText": "No instances",
           "bulkActions": [
@@ -113,7 +113,7 @@
           "blocks": [
             {
               "type": "table",
-              "source": { "kind": "invoke", "method": "incusImages", "intervalKey": "container" },
+              "source": { "kind": "invoke", "method": "incusImages" },
               "rowKey": "name",
               "columns": [
                 { "key": "name", "label": "Alias" },
@@ -132,7 +132,7 @@
           "blocks": [
             {
               "type": "table",
-              "source": { "kind": "invoke", "method": "incusProfiles", "intervalKey": "container" },
+              "source": { "kind": "invoke", "method": "incusProfiles" },
               "rowKey": "name",
               "columns": [
                 { "key": "name", "label": "Name" },
@@ -151,7 +151,7 @@
           "blocks": [
             {
               "type": "table",
-              "source": { "kind": "invoke", "method": "incusNetworks", "intervalKey": "container" },
+              "source": { "kind": "invoke", "method": "incusNetworks" },
               "rowKey": "name",
               "columns": [
                 { "key": "name", "label": "Name" },
@@ -170,7 +170,7 @@
           "blocks": [
             {
               "type": "table",
-              "source": { "kind": "invoke", "method": "incusPools", "intervalKey": "container" },
+              "source": { "kind": "invoke", "method": "incusPools" },
               "rowKey": "name",
               "columns": [
                 { "key": "name", "label": "Name" },
