@@ -29,6 +29,16 @@ release that does not bundle it; an older app already carrying version 3.1.12
 keeps it across the update and can update to 3.1.13 from here without losing its
 tags, rules, saved hosts or history.
 
+Once it is installed, updating it is a button rather than a repository name
+typed again. **Settings → Modules** puts an **Update** button on its row, next
+to Uninstall: press **Check for updates** on the same page and it lights up
+carrying the version when this repository has published something newer.
+Pressing it opens a progress bar and a collapsed console under that row showing
+what the installer is doing — resolved, downloaded, unpacked, graded, compiled
+— and the checks still come first, so nothing is written before you have seen
+them. That button arrived in Bored Manager **0.4.2**; on an older app, install
+the new release the same way you installed the first one.
+
 ## Layout
 
 ```
@@ -119,6 +129,10 @@ The rules a module has to follow — lifecycle, what `ctx` may be used for after
 a stop, what a spec may name — are the app's:
 [docs/MODULE-RULESET.md](https://github.com/FireStarsSoft/Bored-Manager/blob/main/docs/MODULE-RULESET.md)
 and [docs/MODULES.md](https://github.com/FireStarsSoft/Bored-Manager/blob/main/docs/MODULES.md).
+What this repository is - the vendored SDK, LF, packaging, `release.yml`, and
+why a published release is not optional - is
+[docs/MODULE-REPO.md](https://github.com/FireStarsSoft/Bored-Manager/blob/main/docs/MODULE-REPO.md),
+which is also the document to follow to stand up a module repository of your own.
 `npm run check` is what CI runs; a pull request that passes it locally passes
 there.
 
