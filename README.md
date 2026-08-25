@@ -23,7 +23,7 @@ You do not need this repository to use the module. In Bored Manager, open
 | GitHub repo | `FireStarsSoft/Bored-Manager-Container` |
 | Zip URL / file | the `container-<version>.zip` attached to a [release](../../releases) |
 
-It needs Bored Manager **0.2.0** or newer and installs **switched off** —
+It needs Bored Manager **0.4.0** or newer and installs **switched off** —
 enable it in the same place. Bored Manager **0.4.2** is the first app
 release that does not bundle it; an older app already carrying version 3.1.12
 keeps it across the update and can update to 3.1.13 from here without losing its

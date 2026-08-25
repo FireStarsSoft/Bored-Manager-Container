@@ -14,6 +14,10 @@ All notable changes to the Container module (called Docker before 3.0.0). Versio
   here.
 - README: an Installing section, since the module is no longer in the app
   download, and a link back to the repository.
+- `minAppVersion` corrected to **0.4.0**. The manifest said `0.2.0`, but the
+  rules editor calls `ctx.onConfigChange`, which the app only provides from
+  0.4.0, and `@shared/cache` only exists from 0.3.3. On anything older the
+  install passed the version gate and then threw during activation.
 
 ## 3.1.12
 

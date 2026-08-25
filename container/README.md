@@ -13,7 +13,7 @@ Modules**, by any of:
 - **From file** - the `container-<version>.zip` attached to a
   [release](https://github.com/FireStarsSoft/Bored-Manager-Container/releases).
 
-It needs Bored Manager **0.2.0** or newer, and installs switched off; enable
+It needs Bored Manager **0.4.0** or newer, and installs switched off; enable
 it in the same place. Source, issues and changelog live in
 [FireStarsSoft/Bored-Manager-Container](https://github.com/FireStarsSoft/Bored-Manager-Container).
 
