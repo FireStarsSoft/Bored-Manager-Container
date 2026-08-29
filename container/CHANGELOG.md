@@ -2,6 +2,19 @@
 
 All notable changes to the Container module (called Docker before 3.0.0). Versions are independent of the app's.
 
+## 3.1.14
+
+- **Declares the storage it uses.** Bored Manager 0.5.0 lets a module say in its
+  manifest what it needs kept for it, and grants that rather than applying one
+  fixed cap to everything. This module asks for what it already used: the same
+  512 KB for its settings and for what it remembers per machine.
+  It writes one history stream of its own (`container`) and is granted 32 MB of the
+  metrics store for it.
+- **Nothing else changed**, and nothing about it needs a newer app. `minAppVersion`
+  is untouched: an app that has never heard of a `storage` block ignores it, so
+  this release installs on 0.4.3 exactly as the previous one did. On 0.5.0 and
+  later it also shows up in Settings → Data & storage with its own figures.
+
 ## 3.1.13
 
 - **The module now lives in its own repository** and is installed rather than

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo": "FireStarsSoft/Bored-Manager",
-  "ref": "v0.4.1",
+  "ref": "v0.5.0",
   "files": [
     {
       "from": "shared/app-settings.ts",
@@ -26,7 +26,7 @@
     {
       "from": "shared/modules.ts",
       "to": "shared/modules.ts",
-      "sha256": "5b766945b4b0aa7e249d67a12bb3a69283335470c16eabb2416f0d59e6c5236e"
+      "sha256": "1825bef82a42c82049314e46d0489de5b23c64f5d6b112420520e83f9b9f7744"
     },
     {
       "from": "shared/rpc.ts",
@@ -46,7 +46,7 @@
     {
       "from": "shared/types.ts",
       "to": "shared/types.ts",
-      "sha256": "f4ee43bc2d8e874d3e83fcd678d32bc390a6c52ab1f8684f1cf80a931314fa03"
+      "sha256": "f535015452c7b1c90612e3a1bd49dbec520b95d5dfcfc93003ee3c2a1e1ab6d6"
     },
     {
       "from": "shared/validation.ts",
@@ -61,7 +61,7 @@
     {
       "from": "tests/helpers/module-harness.ts",
       "to": "tests/helpers/module-harness.ts",
-      "sha256": "fa31d112f07d6f79ed020f6782c5befe672734da11717f2504a32d66cd8777b1"
+      "sha256": "f2973307ab7a41666ed612473e8fab80343dc47ff8a2cf10f4019539df70da25"
     }
   ]
 }

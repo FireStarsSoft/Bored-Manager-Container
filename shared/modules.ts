@@ -132,6 +132,57 @@ export interface ModuleStreamDecl {
   kind: 'series' | 'latest'
 }
 
+/**
+ * What a module asks the app to keep for it.
+ *
+ * A module asks; the app grants. Every figure here is a *request* that is
+ * clamped against `MODULE_STORAGE_CEILINGS` and whatever the user has allowed,
+ * and `ctx.storageGrant()` answers with what was actually granted - never with
+ * what was asked for. That asymmetry is the point: storage is the one resource
+ * a module consumes on the user's disk indefinitely, so the module states its
+ * need in the manifest where it can be read before installing, and the app
+ * stays the only thing that decides.
+ *
+ * The whole block is optional. A manifest without one is granted the defaults
+ * that were the fixed, undeclared caps before this existed, so an older module
+ * keeps working unchanged - and, because `manifestProblems` ignores keys it
+ * does not know, a manifest *with* one still installs on an app that predates
+ * it.
+ */
+export interface ModuleStorageDecl {
+  /** `ctx.configGet/configSet` - module-wide settings, one JSON document. */
+  config?: { maxKB: number }
+  /** `ctx.hostDataGet/hostDataSet` - one JSON document per connected machine. */
+  hostData?: { maxKB: number }
+  /** `ctx.addHistory` - the streams this module writes, and their share of the metrics store. */
+  history?: { streams: string[]; maxMB: number }
+  /** Append-only record sets, for anything that has to outlive the metrics retention window. */
+  records?: ModuleRecordSetDecl[]
+}
+
+/**
+ * One append-only set of dated rows: a daily rollup, an incident log, an audit
+ * trail. Distinct from history because history is a downsampled numeric series
+ * capped at `HistorySettings.retentionHours` (48 hours at the most), and a
+ * daily row that has to survive a year cannot live there.
+ */
+export interface ModuleRecordSetDecl {
+  /** Unique within the module; becomes a directory name under its data folder. */
+  id: string
+  /** Shown in Settings, so the user can see what a module is keeping and why. */
+  label: string
+  maxMB: number
+  /** Rows older than this are swept, whether or not the set is near its cap. */
+  retentionDays: number
+  /**
+   * What happens at the cap. `evict-oldest` drops whole day buckets from the
+   * far end, which is right for telemetry - losing last year keeps this year.
+   * `refuse` fails the append instead, for a set where a silent hole would be
+   * worse than a loud error.
+   */
+  overflow?: 'evict-oldest' | 'refuse'
+}
+
 /** `module.json` - everything the app knows about a module before running it. */
 export interface ModuleManifest {
   apiVersion: number
@@ -161,6 +212,8 @@ export interface ModuleManifest {
   streams?: ModuleStreamDecl[]
   /** Names registered with `ctx.handle`, callable from a block spec. */
   methods?: string[]
+  /** What the app should keep for this module; omit to take the defaults. */
+  storage?: ModuleStorageDecl
   /** Key in settings.refresh this module reads. */
   fastInterval?: string
   /** Key in settings.slowRefresh this module reads. */
@@ -186,6 +239,19 @@ export interface ModuleRuntimeState {
   /** SHA-256 over the module folder, see moduleFolderHash. */
   hash: string
   source: ModuleSource
+  /**
+   * `owner/repo` this module was installed from, when it came from a GitHub
+   * repository. Remembered so Settings can check that repository for a newer
+   * release without the user retyping where the module lives.
+   *
+   * Only the repository, never the asset URL: a release asset URL names one
+   * version and is wrong again the moment that module updates, whereas the
+   * repository stays true for the module's whole life and the current asset
+   * is derived from it. Absent for a module installed from a file, or one
+   * installed before the app recorded this - the Settings list falls back to
+   * `OFFICIAL_MODULES` by id there.
+   */
+  repo?: string
   installedAt: number
   updatedAt: number
 }
@@ -273,6 +339,18 @@ export interface ModuleRecoveryFailure {
 
 export interface ModuleInstallState {
   phase: ModuleInstallPhase
+  /**
+   * Which module this operation is about, as early as it is known: the id of
+   * the row whose Update button was pressed, then the id in the staged
+   * manifest once that has been read. Settings anchors the progress bar and
+   * console under that module's own row; absent - the manual URL box, or a
+   * picked file before its manifest is readable - the panel falls back to the
+   * bottom of the card.
+   *
+   * Placement only. What is actually installed is decided by the staged
+   * manifest and the confirmation token, never by this.
+   */
+  moduleId?: string
   /** Archive being inspected: a URL or the path of the picked file. */
   source?: string
   progress?: { receivedBytes: number; totalBytes: number | null }
@@ -282,7 +360,13 @@ export interface ModuleInstallState {
     token: string
     expiresAt: number
   }
-  /** Tail of the build output while phase is 'building'. */
+  /**
+   * Running transcript of the whole operation, oldest line first, capped at
+   * the last MAX_LOG_LINES. Appended to across every phase rather than
+   * replaced per phase: what makes this worth showing is the sequence -
+   * resolved, downloaded, unpacked, graded, compiled - not whichever single
+   * step happens to be running when someone looks.
+   */
   log?: string[]
   /**
    * What the last recovery pass could not finish. Non-empty means every
@@ -313,6 +397,13 @@ export interface RegistryEntry {
   author: string
   /** Opened in a new tab from the catalog; not every entry has one. */
   homepage?: string
+  /**
+   * `owner/repo` the module is developed in, so "check for an update" has
+   * somewhere to ask. Discovery only: it is deliberately not part of
+   * `exactCatalogMatches` - what an entry vouches for is still the exact
+   * `download` + `sha256` pair below and nothing else.
+   */
+  repo?: string
   /** The version that was reviewed - not necessarily the module's latest. */
   version: string
   minAppVersion?: string
@@ -341,6 +432,255 @@ export interface ModuleCatalog {
   fetchedAt: number | null
   /** True when a refetch failed and this is a cached (possibly older) copy. */
   stale: boolean
+}
+
+// ---------- First-party modules, released from their own repositories ----------
+//
+// Modules the app's own maintainers write, each living in its own repository
+// and released on its own schedule. The list is compiled into the app rather
+// than fetched, so Settings can offer them without a network round trip, while
+// offline, and without anyone having to know or type a repository name.
+// server/services/official-modules.ts merges it with the community catalog
+// above; server/services/module-updates.ts is what asks each repository what
+// its latest release is.
+//
+// This list is *discovery, not verification*. It says where a module lives; it
+// says nothing about the bytes of any particular release, and an install from
+// here is graded by exactly the same checks as one typed into the URL box.
+// That is why it carries no `version`, `download` or `sha256`. Those belong to
+// one release: compiling them in would freeze into the app the very coupling
+// that moving these modules out of the repository removed, and a hash pinned
+// here could not grant `catalog-verified` in any case - `exactCatalogMatches`
+// compares against the archive being installed, which for anyone running an
+// older app is a newer release than whatever hash that app was built with.
+
+/**
+ * GitHub owners whose repositories are first-party, whether or not any list
+ * names the module inside them.
+ *
+ * The built-in `OFFICIAL_MODULES` list below answers "what should Settings
+ * offer out of the box"; this answers a different question - "is this
+ * repository ours" - and the two stopped being the same thing once a
+ * first-party module was deliberately left off the list. A module can be
+ * unlisted (the user has to paste its repository name) and still be ours.
+ *
+ * What it grants is provenance, not review: an install from one of these owners
+ * shows the `official` badge and skips the "Unverified module" confirmation,
+ * because the app already downloads its own updates from this owner and asking
+ * the user to vouch for the same account again buys nothing. It does **not**
+ * grant `catalog-verified`, which needs a catalog entry naming one exact
+ * archive by hash - a repository is a moving target and a hash is not.
+ *
+ * The trade is worth stating plainly: this makes every repository under these
+ * owners trusted, including one created by mistake or by a compromised account.
+ * It is a bet on the account, not on any particular module.
+ */
+export const OFFICIAL_MODULE_OWNERS: readonly string[] = ['FireStarsSoft']
+
+/**
+ * Whether `owner/repo` belongs to a first-party owner. Case-insensitive,
+ * because GitHub owners are, and a user typing `firestarssoft/...` into
+ * Settings means the same repository.
+ */
+export function isOfficialModuleRepo(repo: string | undefined | null): boolean {
+  if (typeof repo !== 'string') return false
+  const owner = repo.trim().split('/')[0]?.toLowerCase()
+  if (!owner) return false
+  return OFFICIAL_MODULE_OWNERS.some((known) => known.toLowerCase() === owner)
+}
+
+/** A module the maintainers develop and release in a repository of its own. */
+export interface OfficialModuleEntry {
+  /** Must match the module's own `module.json` id. */
+  id: string
+  name: string
+  description: string
+  author: string
+  /** `owner/repo` on GitHub - the single source of truth for this module. */
+  repo: string
+  homepage: string
+}
+
+/**
+ * Listed in the order a fresh install wants them: the four that describe the
+ * machine the server is watching come first, since 0.4.3 ships none of them and
+ * this list is the first thing an empty Modules page offers.
+ */
+export const OFFICIAL_MODULES: readonly OfficialModuleEntry[] = [
+  {
+    id: 'processes',
+    name: 'Processes',
+    description:
+      'A sortable, filterable process table with a glances-style system detail strip, plus kill (SIGTERM/SIGKILL) and renice - and a second page for what the Bored Manager server itself is running.',
+    author: 'Bored Manager',
+    repo: 'FireStarsSoft/Bored-Manager-Processes',
+    homepage: 'https://github.com/FireStarsSoft/Bored-Manager-Processes'
+  },
+  {
+    id: 'network',
+    name: 'Network',
+    description:
+      'Per-interface traffic, every TCP/UDP connection with its owning process and rate, bandwidth per process, listening ports, TCP retransmits, gateway and DNS - plus the kernel limits (ARP table, file descriptors, inotify, conntrack) that decide how many containers a machine can hold.',
+    author: 'Bored Manager',
+    repo: 'FireStarsSoft/Bored-Manager-Network',
+    homepage: 'https://github.com/FireStarsSoft/Bored-Manager-Network'
+  },
+  {
+    id: 'disk',
+    name: 'Disk & storage',
+    description:
+      'Throughput, IOPS, latency and utilisation per block device, every disk and partition on the machine, file system usage with inodes, and I/O per process.',
+    author: 'Bored Manager',
+    repo: 'FireStarsSoft/Bored-Manager-Disk',
+    homepage: 'https://github.com/FireStarsSoft/Bored-Manager-Disk'
+  },
+  {
+    id: 'sensors',
+    name: 'Sensors',
+    description:
+      'Temperatures, fan speeds, voltages, power and current from every chip the machine exposes, via lm-sensors or /sys/class/hwmon.',
+    author: 'Bored Manager',
+    repo: 'FireStarsSoft/Bored-Manager-Sensors',
+    homepage: 'https://github.com/FireStarsSoft/Bored-Manager-Sensors'
+  },
+  {
+    id: 'gpu',
+    name: 'GPU',
+    description:
+      'Utilisation, VRAM, temperature and power charts for every GPU the machine reports, with power limit, persistence and clock controls plus an auto power cap that follows the GPUs the machine actually has.',
+    author: 'Bored Manager',
+    repo: 'FireStarsSoft/Bored-Manager-GPU',
+    homepage: 'https://github.com/FireStarsSoft/Bored-Manager-GPU'
+  },
+  {
+    id: 'container',
+    name: 'Container',
+    description:
+      'Docker and Incus side by side: containers with CPU, memory, network and block I/O, inspect with logs and an exec shell, images, volumes and networks - plus tags, bulk create and bulk actions with a check step before anything runs, and installing either runtime on a machine that has neither.',
+    author: 'Bored Manager',
+    repo: 'FireStarsSoft/Bored-Manager-Container',
+    homepage: 'https://github.com/FireStarsSoft/Bored-Manager-Container'
+  },
+  {
+    id: 'bmc',
+    name: 'BMC',
+    description:
+      'Control server mainboards out-of-band through their BMC using IPMI over LAN: power, sensors, event log, boot device.',
+    author: 'Bored Manager',
+    repo: 'FireStarsSoft/Bored-Manager-BMC',
+    homepage: 'https://github.com/FireStarsSoft/Bored-Manager-BMC'
+  },
+  {
+    id: 'openwrt',
+    name: 'OpenWRT',
+    description:
+      'Manage an OpenWRT router over SSH without its web UI: live dashboard, bulk PPPoE dialing and one-to-one LAN device to WAN binding.',
+    author: 'Bored Manager',
+    repo: 'FireStarsSoft/Bored-Manager-OpenWRT',
+    homepage: 'https://github.com/FireStarsSoft/Bored-Manager-OpenWRT'
+  }
+] as const
+
+/** What asking one repository for its latest release came back with. */
+export interface ModuleUpdateCheck {
+  id: string
+  /** `owner/repo` that was asked. */
+  repo: string
+  /** Latest release tag with a leading "v" stripped; null when there is none. */
+  latestVersion: string | null
+  /** What is installed right now, read when the answer is assembled. */
+  installedVersion: string | null
+  /** Where installing that latest release would download from. */
+  downloadUrl?: string
+  /** True when `latestVersion` came from a release rather than a branch zip. */
+  fromRelease: boolean
+  action: ModuleUpdateAction
+  /** Why this one repository could not be read; the others are unaffected. */
+  error?: string
+  checkedAt: number
+}
+
+/**
+ * What the button next to a module should offer.
+ *
+ * `no-release` is a real state and not a failure: a module repository with no
+ * published release cannot be installed at all, because the source zip of a
+ * default branch unpacks to a tree whose `module.json` is not where
+ * `findArchiveRoot` can find it. Offering an Install button there would walk
+ * the user straight into `MODULE_ARCHIVE_INVALID`, so the UI says so and
+ * disables it instead.
+ */
+export type ModuleUpdateAction =
+  | 'install'
+  | 'update'
+  | 'up-to-date'
+  | 'no-release'
+  | 'unknown'
+
+/**
+ * Why a module is in the list: the built-in list names it, the community
+ * catalog names it, both do - or neither does and it is only there because it
+ * is installed and remembered which repository it came from. That last case is
+ * how a third-party module the user found themselves still gets told when its
+ * repository publishes something newer.
+ */
+export type ModuleListingOrigin = 'official' | 'catalog' | 'both' | 'installed'
+
+/** One module Settings can offer, whichever of the two lists named it. */
+export interface ModuleListing {
+  id: string
+  name: string
+  description: string
+  author: string
+  homepage?: string
+  origin: ModuleListingOrigin
+  /** `owner/repo`, when either list knows one. What a live check needs. */
+  repo?: string
+  /**
+   * Present only when the community catalog vouches for a specific archive.
+   * This - not `repo` - is what can earn an install `catalog-verified`.
+   */
+  reviewed?: {
+    version: string
+    download: string
+    minAppVersion?: string
+    verifiedAt: string
+  }
+  /** The most recent answer from `repo`, served from cache unless refreshed. */
+  check?: ModuleUpdateCheck
+}
+
+/**
+ * What `modules:storage` and `modules:clearStorage` answer: what every
+ * installed module was allowed, beside what it is actually using. The two
+ * arrays are separate rather than one joined row because a grant exists for a
+ * module that has written nothing yet, and Settings should still be able to
+ * show what it would be allowed to write.
+ */
+export interface ModuleStorageReport {
+  grants: ModuleStorageGrant[]
+  usage: ModuleStorageUsage[]
+}
+
+/** What `modules:directory` and `modules:updatesRefresh` answer. */
+export interface ModuleDirectory {
+  listings: ModuleListing[]
+  /**
+   * How the remote half went. Kept separate from the listings because it
+   * describes one fetch of one file, and cannot honestly describe a list that
+   * is half compiled into the app: offline, `entries` is empty and `stale` is
+   * true while every official module is still listed.
+   */
+  catalog: {
+    sourceRepo: string
+    sourceUrl: string
+    fetchedAt: number | null
+    stale: boolean
+  }
+  /** When the repositories were last asked; null when they never have been. */
+  checkedAt: number | null
+  /** True when at least one repository could not be read this time round. */
+  checksStale: boolean
 }
 
 // ---------- The runtime contract ----------
@@ -392,6 +732,126 @@ export interface ModuleHistoryPoint {
 }
 
 /**
+ * One row in a record set. `t` is raw epoch milliseconds, never a formatted
+ * string - the same rule the UI spec's `time`/`datetime` formats rely on, so a
+ * row written on a server in one timezone reads correctly in a browser in
+ * another. `key` groups rows that belong to the same subject (a machine, an
+ * agent, a device) so a query can ask for one without scanning the rest.
+ */
+export interface ModuleRecord {
+  t: number
+  key?: string
+  [field: string]: unknown
+}
+
+export interface ModuleRecordQuery {
+  /** Inclusive lower bound, epoch ms. */
+  from?: number
+  /** Exclusive upper bound, epoch ms. */
+  to?: number
+  /** Only rows carrying this `key`. */
+  key?: string
+  /** Newest first when `desc`; defaults to oldest first. */
+  order?: 'asc' | 'desc'
+  /** Rows per page. Clamped to `MODULE_RECORD_PAGE_MAX`. */
+  limit?: number
+  /** Opaque value from a previous page's `next`. */
+  cursor?: string
+}
+
+export interface ModuleRecordPage {
+  rows: ModuleRecord[]
+  /** Pass back as `cursor` for the next page; absent when the set is exhausted. */
+  next?: string
+}
+
+/** One resource in a grant: what was asked for, and what the app allowed. */
+export interface ModuleStorageAllowance {
+  /** What the manifest asked for, or the default when it asked for nothing. */
+  requestedBytes: number
+  /** What the module actually gets. Never above the ceiling. */
+  grantedBytes: number
+  /** Set when the request was cut down, saying what did the cutting. */
+  clampedBy?: 'ceiling' | 'user'
+}
+
+export interface ModuleRecordGrant extends ModuleStorageAllowance {
+  id: string
+  label: string
+  retentionDays: number
+  overflow: 'evict-oldest' | 'refuse'
+}
+
+/** What the app has agreed to keep for one module. */
+export interface ModuleStorageGrant {
+  moduleId: string
+  config: ModuleStorageAllowance
+  hostData: ModuleStorageAllowance
+  history: ModuleStorageAllowance & { streams: string[] }
+  records: ModuleRecordGrant[]
+}
+
+/** What one module is using right now, against what it was granted. */
+export interface ModuleStorageUsage {
+  moduleId: string
+  configBytes: number
+  hostDataBytes: number
+  historyBytes: number
+  recordBytes: number
+  totalBytes: number
+  /** Per record set, so Settings can name the one that is filling up. */
+  sets: Array<{
+    id: string
+    label: string
+    bytes: number
+    grantedBytes: number
+    rows: number
+    oldestMs: number | null
+    newestMs: number | null
+  }>
+}
+
+/**
+ * The most rows one `recordQuery` may answer with. A module that wants more
+ * pages through `cursor`; without a ceiling here a single call could be asked
+ * to hold a year of telemetry in memory.
+ */
+export const MODULE_RECORD_PAGE_MAX = 5000
+
+/** The most rows one `recordAppend` may carry. */
+export const MODULE_RECORD_APPEND_MAX = 10_000
+
+/**
+ * The hard limits behind every grant. A manifest may ask for less and get it;
+ * asking for more is clamped rather than refused, because a module that wants
+ * a gigabyte is not malicious, it is optimistic, and refusing to install it
+ * over a number it guessed would be a worse trade than giving it what the app
+ * is willing to spare and telling it so through `storageGrant()`.
+ */
+export const MODULE_STORAGE_CEILINGS = {
+  configBytes: 4 * 1024 * 1024,
+  hostDataBytes: 4 * 1024 * 1024,
+  historyBytes: 512 * 1024 * 1024,
+  /** Per record set. */
+  recordSetBytes: 1024 * 1024 * 1024,
+  /** Every record set of one module together. */
+  recordTotalBytes: 2 * 1024 * 1024 * 1024,
+  recordSets: 16,
+  retentionDays: 3650
+} as const
+
+/**
+ * What a module gets when its manifest declares nothing. These are the caps
+ * that were fixed and undeclared before the storage block existed, so an
+ * undeclared module behaves exactly as it did.
+ */
+export const MODULE_STORAGE_DEFAULTS = {
+  configBytes: 512 * 1024,
+  hostDataBytes: 512 * 1024,
+  historyBytes: 64 * 1024 * 1024
+} as const
+
+/**
  * Everything a module may do in the main process. Deliberately narrow: a
  * module talks to the target machine and to its own renderer half, and never
  * touches the app folder or another module's state.
@@ -402,12 +862,17 @@ export interface ModuleHistoryPoint {
  * running commands, emitting or writing files after the app has been told it
  * is gone. What that looks like depends on the member:
  *
- * - `exec`, `execSudo`, `stream`, `streamSudo` reject with
+ * - `exec`, `execSudo`, `stream`, `streamSudo`, `recordAppend`, `recordQuery`,
+ *   `recordDelete` and `storageUsage` reject with
  *   `module "<id>" is no longer running`, and `handle`, `createPoller` (and a
  *   poller's `start`) throw it. A module has to be able to tell that its
- *   command did not run.
+ *   command did not run, and a collector has to be able to tell that its rows
+ *   were not kept - a silently dropped append would leave a hole its cursor
+ *   claims was filled.
  * - `emit`, `addHistory`, `log`, `configSet` and `hostDataSet` do nothing;
- *   `configGet`, `hostDataGet` and `hostKey` return `null`. The point of
+ *   `configGet`, `hostDataGet` and `hostKey` return `null`, and
+ *   `storageGrant` keeps answering with the grant the module was given, since
+ *   reading a number that is no longer being spent against harms nothing. The point of
  *   revoking those is "write nothing more", which doing nothing satisfies -
  *   and unlike a throw it cannot escape a detached promise and take the
  *   server down. The first such call is logged against the module.
@@ -522,6 +987,26 @@ export interface ModuleContext {
   hostDataSet(value: unknown): void
   /** Which machine hostDataGet/Set are pointed at, or null when disconnected. */
   readonly hostKey: string | null
+  /**
+   * Append rows to one of the record sets this module declared. Rows outlive
+   * the metrics retention window, so this is where a daily rollup or an
+   * incident log belongs - `addHistory` is swept within 48 hours at the most.
+   *
+   * Rejects when `setId` was not declared in the manifest, when the batch is
+   * over `MODULE_RECORD_APPEND_MAX`, and when the set is full and its
+   * `overflow` is `refuse`. Appending is idempotent only as far as the module
+   * makes it so: the store does not deduplicate, so a collector that replays
+   * has to carry its own cursor.
+   */
+  recordAppend(setId: string, rows: readonly ModuleRecord[]): Promise<void>
+  /** Read rows back, oldest first unless asked otherwise, paged by `cursor`. */
+  recordQuery(setId: string, query?: ModuleRecordQuery): Promise<ModuleRecordPage>
+  /** Drop rows matching the query; answers how many went. */
+  recordDelete(setId: string, query?: ModuleRecordQuery): Promise<number>
+  /** What the app agreed to keep for this module - granted figures, not requested ones. */
+  storageGrant(): ModuleStorageGrant
+  /** What it is using right now, for a module that wants to show its own footprint. */
+  storageUsage(): Promise<ModuleStorageUsage>
   /** Whether another module is installed and enabled, for optional probes. */
   isModuleEnabled(id: string): boolean
   log(message: string): void
@@ -766,6 +1251,101 @@ export function manifestProblems(raw: unknown): string[] {
   }
   if (m.slowInterval != null && (typeof m.slowInterval !== 'string' || !m.slowInterval.trim())) {
     problems.push('slowInterval is not a non-empty string')
+  }
+  problems.push(...storageProblems(m.storage, m.id))
+
+  return problems
+}
+
+/** A positive whole number of KB/MB/days; anything else is a typo worth naming. */
+function sizeProblem(where: string, value: unknown): string | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return `${where} is not a number`
+  if (!Number.isInteger(value)) return `${where} is not a whole number`
+  if (value <= 0) return `${where} is not greater than zero`
+  return null
+}
+
+/**
+ * The `storage` block is checked but never enforced here: a request over the
+ * ceiling is clamped at grant time rather than rejected, so a module is not
+ * made uninstallable by a number somebody guessed. What is rejected is a block
+ * that cannot be read at all - a set with no id, two sets with the same id, a
+ * history stream this module is not allowed to own - because those are
+ * mistakes the app cannot silently pick a sane value for.
+ */
+export function storageProblems(raw: unknown, moduleId: unknown): string[] {
+  if (raw == null) return []
+  const problems: string[] = []
+  if (!isRecord(raw)) return ['storage is not an object']
+  const decl = raw as Partial<ModuleStorageDecl>
+
+  for (const key of ['config', 'hostData'] as const) {
+    const part = decl[key]
+    if (part == null) continue
+    if (!isRecord(part)) {
+      problems.push(`storage.${key} is not an object`)
+      continue
+    }
+    const problem = sizeProblem(`storage.${key}.maxKB`, (part as { maxKB?: unknown }).maxKB)
+    if (problem) problems.push(problem)
+  }
+
+  if (decl.history != null) {
+    if (!isRecord(decl.history)) {
+      problems.push('storage.history is not an object')
+    } else {
+      const problem = sizeProblem('storage.history.maxMB', decl.history.maxMB)
+      if (problem) problems.push(problem)
+      if (!Array.isArray(decl.history.streams)) {
+        problems.push('storage.history.streams is not an array')
+      } else {
+        for (const stream of decl.history.streams) {
+          if (typeof stream !== 'string') {
+            problems.push('storage.history.streams contains something that is not a string')
+            continue
+          }
+          const problem = historyStreamProblem(typeof moduleId === 'string' ? moduleId : '', stream)
+          if (problem) problems.push(`storage.history.streams: ${problem}`)
+        }
+      }
+    }
+  }
+
+  if (decl.records != null) {
+    if (!Array.isArray(decl.records)) return [...problems, 'storage.records is not an array']
+    if (decl.records.length > MODULE_STORAGE_CEILINGS.recordSets) {
+      problems.push(
+        `storage.records declares more than ${MODULE_STORAGE_CEILINGS.recordSets} sets`
+      )
+    }
+    const seen = new Set<string>()
+    for (const set of decl.records) {
+      if (!isRecord(set)) {
+        problems.push('storage.records contains something that is not an object')
+        continue
+      }
+      const r = set as Partial<ModuleRecordSetDecl>
+      const idProblem = subIdProblem('record set', r.id)
+      if (idProblem) problems.push(`storage.records: ${idProblem}`)
+      else if (seen.has(r.id as string)) {
+        problems.push(`storage.records: record set id "${r.id}" is declared twice`)
+      } else seen.add(r.id as string)
+      if (typeof r.label !== 'string' || !r.label.trim()) {
+        problems.push(`storage.records: set "${String(r.id)}" has no label`)
+      }
+      for (const [field, value] of [
+        ['maxMB', r.maxMB],
+        ['retentionDays', r.retentionDays]
+      ] as const) {
+        const problem = sizeProblem(`storage.records["${String(r.id)}"].${field}`, value)
+        if (problem) problems.push(problem)
+      }
+      if (r.overflow != null && r.overflow !== 'evict-oldest' && r.overflow !== 'refuse') {
+        problems.push(
+          `storage.records["${String(r.id)}"].overflow is not "evict-oldest" or "refuse"`
+        )
+      }
+    }
   }
 
   return problems

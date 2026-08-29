@@ -428,7 +428,7 @@ export interface ProcessInfo {
   rssBytes: number
   stat: string
   etime: string
-  /** The full command line. There is no `comm` beside it - see LIST_CMD in modules/processes/main/service.ts. */
+  /** The full command line. There is no `comm` beside it - see LIST_CMD in the Processes module's `main/service.ts`. */
   args: string
 }
 
@@ -816,6 +816,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
   densityAutoDetected: false,
   historyWindow: 60,
   refresh: {
+    // `system` is the only one of these the app collects itself. The rest are
+    // module keys, seeded although 0.4.3 ships no modules at all: the interface
+    // requires them, and a fresh install has to have something to offer for the
+    // key before the module that declares it is installed. BMC's two entries
+    // went with the module because they only ever repeated the fallback - these
+    // do not, and `processes` is read by the Overview's own top-consumers
+    // collector whether the Processes module is there or not.
     system: 'normal',
     sensors: 'normal',
     gpu: 'normal',
@@ -823,19 +830,24 @@ export const DEFAULT_SETTINGS: AppSettings = {
     processes: 'normal',
     network: 'normal',
     disk: 'normal',
-    bmc: 'normal',
     // A module-declared refresh key with no default here reads back as
     // `normal` (modules-host's fastIntervalMs), so this entry is not required
     // for service-fleet to poll - it is a deliberate override to `low`,
     // since this tick only re-reads the last sweep from memory; the sweep
-    // itself is on slowRefresh below.
+    // itself is on slowRefresh below. Which is why it outlived the move to a
+    // separate repository: dropping it makes every fresh install re-read 2.5x
+    // as often as intended.
     'service-fleet': 'low'
   },
   slowRefresh: {
+    // Every key here belongs to a module now, and the two overrides are the
+    // reason the whole block stays: a missing key falls back to 60, so dropping
+    // `container` and `service-fleet` would leave a fresh install asking Docker
+    // for disk usage 5x as often and sweeping every monitored machine over SSH
+    // 2x as often as intended, the moment the module was installed.
     storage: 60,
     container: 300,
     network: 60,
-    bmc: 60,
     'service-fleet': 120
   },
   overviewWidgets: {},
